@@ -98,5 +98,5 @@ If you or your company doesn't want to use AGPL, contact us by email at contact@
 
 Acknowledgements
 ----------------
-Our thanks to Wilson Júnior wilsonpjunior@gmail.com for the great work he did on the initial
+Our thanks to Wilson Júnior [Wpjunior](https://github.com/Wpjunior) for the great work he did on the initial
 version of the codebase.
