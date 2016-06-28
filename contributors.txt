@@ -1,0 +1,9 @@
+1. Place the following phrase *at the top* of the list below on a separate line:
+
+    "I, username, agree to the CLA."
+
+2. The `username` must match the *github* username with which you are submitting the pull request.
+
+Contributors
+============
+* I, drozzy, agree to the CLA.
