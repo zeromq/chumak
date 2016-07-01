@@ -9,7 +9,7 @@ What is erlangzmq?
 Goal
 ----
 
-The goal of `erlangzmq` library is to provide up-to-date binding for ZMTP.
+The goal of `erlangzmq` library is to provide up-to-date native Erlang implementation of ZMTP.
 
 Features
 --------
@@ -53,14 +53,14 @@ Copyright [Choven Corp.](http://choven.ca) 2016. All Rights Reserved.
 
 FAQ
 ---
-1. Why another Erlang binding?
+1. Why another Erlang implementation?
 
-   Because the existing bindings are out of date.
+   Because the existing Erlang implementations and bindings are out of date.
 
 
 2. Why a dual-license?
 
-   To keep the binding up-to-date. Having a commercial license allows us to charge money for code. Erlang is not a very
+   To keep the code up-to-date. Having a commercial license allows us to charge money for code. Erlang is not a very
    trendy language, so the number of contributors to the open source project
    like this is small. In order to keep it from dying, we think it makes sense
    to run it as a commercial project.
