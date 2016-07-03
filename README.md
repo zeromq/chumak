@@ -30,14 +30,21 @@ Not implemented
 1. CurveZMQ - security is not currently implemented. As a work-around, consider
 using a proxy running [libzmq](https://github.com/zeromq/libzmq).
 
-Build
+Usage
 -----
+
+Use just like any regular Erlang/OTP application.
+
+Make
+----
+Shortcut for buliding and testing the project.
+
+Build:
 ```
 $ make setup
 ```
 
-Test
-----
+Test:
 ```
 $ make test
 ```
