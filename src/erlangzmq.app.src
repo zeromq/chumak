@@ -16,7 +16,7 @@
 %% along with erlangzmq.  If not, see <http://www.gnu.org/licenses/>
 
 {application, erlangzmq,
- [{description, "Erlang bindings for Zero-MQ"},
+ [{description, "Erlang implementation of ZeroMQ Transport Protocol (ZMTP)"},
   {vsn, "0.1.0"},
   {registered, []},
   {mod, { erlangzmq, []}},
@@ -27,7 +27,7 @@
   {env,[]},
   {modules, []},
 
-  {maintainers, []},
-  {licenses, []},
-  {links, []}
+  {maintainers, ["Andriy Drozdyuk"]},
+  {licenses, ["AGPL", "Commercial"]},
+  {links, [{"Github", "https://github.com/chovencorp/erlangzmq"}]}
  ]}.
