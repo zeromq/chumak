@@ -17,7 +17,7 @@
 
 {application, erlangzmq,
  [{description, "Erlang implementation of ZeroMQ Transport Protocol (ZMTP)"},
-  {vsn, "0.1.0"},
+  {vsn, "1.0.0"},
   {registered, []},
   {mod, { erlangzmq, []}},
   {applications,
