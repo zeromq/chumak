@@ -9,7 +9,7 @@ What is erlangzmq?
 Goal
 ----
 
-The goal of `erlangzmq` library is to provide up-to-date native Erlang implementation of ZMTP.
+The goal of `erlangzmq` application is to provide up-to-date native Erlang implementation of ZMTP.
 
 Features
 --------
@@ -30,23 +30,47 @@ Not implemented
 1. CurveZMQ - security is not currently implemented. As a work-around, consider
 using a proxy running [libzmq](https://github.com/zeromq/libzmq).
 
+Install
+-------
+
+You can install `erlangzmq` from Hex: https://hex.pm/packages/erlangzmq or by referencing a specific tag directly:
+
+```
+{deps,[
+  {erlangzmq, {git, "git@github.com:chovencorp/erlangzmq.git", {tag, "1.0.0"}}}  
+]}.
+```
+
+For more info on rebar3 dependencies see the [rebar3 docs](http://www.rebar3.org/docs/dependencies).
+
 Usage
 -----
 
 Use just like any regular Erlang/OTP application.
 
-Make
+Build
+-----
+```
+$ rebar3 compile
+```
+
+Test
 ----
-Shortcut for buliding and testing the project.
+```
+$ rebar3 eunit -c
+```
+The `-c` will allow you to see the test coverage by running the command below.
 
-Build:
+Coverage
+--------
 ```
-$ make setup
+$ rebar3 cover
 ```
 
-Test:
+Generate Docs
+-------------
 ```
-$ make test
+$ rebar3 edoc
 ```
 
 Architecture
