@@ -8,7 +8,7 @@ System Overview
 
 The system map below presents an overview of the system.
 
-![System Map](images/erlang_system_map.png)
+![System Map](images/erlangzmq_system_map.png)
 
 Sockets
 -------
