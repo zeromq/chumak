@@ -49,6 +49,10 @@ Test:
 $ make test
 ```
 
+Documentation
+-------------
+Description of the system structure and behavior can be found in [documentation](docs/documentation.md).
+
 Contributing
 ------------
 
