@@ -1,7 +1,8 @@
-erlangzmq documentation
-=======================
+Architecture
+============
 
-`erlangzmq` is a library written in [Erlang](https://www.erlang.org/). It implements the ZeroMQ Message Transport Protocol (ZMTP). `erlangzmq` supports ZMTP version [3.1](http://rfc.zeromq.org/spec:37/ZMTP/).
+This document aims to describe the architecture of the system to make it easier
+for contributors to understand its structure and behavior.
 
 System Overview
 ---------------

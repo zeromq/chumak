@@ -49,9 +49,9 @@ Test:
 $ make test
 ```
 
-Documentation
+Architecture
 -------------
-Description of the system structure and behavior can be found in [documentation](docs/documentation.md).
+[Architecture](docs/architecture.md) describes the system structure.
 
 Contributing
 ------------
