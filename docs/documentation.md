@@ -24,3 +24,8 @@ Here we can see different types of sockets and also which relationships
 the sockets participate in.
 
 ![Entity Relationship Diagram](images/erlangzmq_entities.png)
+
+Notation
+--------
+
+The notation used in diagrams follows the [FMC](http://www.fmc-modeling.org/notation_reference) standard.
