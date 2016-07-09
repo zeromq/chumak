@@ -46,7 +46,9 @@ For more info on rebar3 dependencies see the [rebar3 docs](http://www.rebar3.org
 Usage
 -----
 
-Use just like any regular Erlang/OTP application.
+See [examples](https://github.com/chovencorp/erlangzmq/tree/master/examples). Otherwise use just like a regular Erlang/OTP application.
+
+You can use [python tests](https://github.com/chovencorp/erlangzmq/tree/master/python-test) to try language interop. You need to have pyzmq installed. 
 
 Build
 -----
