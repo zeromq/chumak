@@ -48,7 +48,7 @@ Usage
 
 See [examples](https://github.com/chovencorp/erlangzmq/tree/master/examples). Otherwise use just like a regular Erlang/OTP application.
 
-You can use [python tests](https://github.com/chovencorp/erlangzmq/tree/master/python-test) to try language interop. You need to have pyzmq installed. 
+If you would like to use [python tests](https://github.com/chovencorp/erlangzmq/tree/master/python-test) to try language interop, you need to have [pyzmq](https://github.com/zeromq/pyzmq) installed. 
 
 Build
 -----
