@@ -26,7 +26,8 @@
 -export([start/2, stop/1]).
 -export([socket/1, socket/2, connect/4, connect/5, bind/4, send/2, recv/1, send_multipart/2, recv_multipart/1,
          cancel/2, subscribe/2,
-         resource/0, attach_resource/3]).
+         resource/0, attach_resource/3,
+         version/0]).
 
 -define(SUPERVISOR, erlangzmq_sup).
 
@@ -149,3 +150,20 @@ resource() ->
 -spec attach_resource(ResourcePid::pid(), Resource::binary(), SocketPid::pid()) -> ok.
 attach_resource(ResourcePid, Resource, SocketPid) ->
     gen_server:cast(ResourcePid, {attach, Resource, SocketPid}).
+
+
+-spec version() -> {Major::integer(), Minor::integer(), Patch::integer()}.
+version() ->
+  case application:get_application(erlangzmq) of
+    {ok, erlangzmq} ->
+      return_version();
+    undefined -> {error, application_not_started}
+  end.
+
+return_version() ->
+  {ok, Version} = application:get_key(erlangzmq, vsn),
+  [X, Y, Z] = string:tokens(Version, "."),
+  Major = list_to_integer(X),
+  Minor = list_to_integer(Y),
+  Patch = list_to_integer(Z),
+  {Major, Minor, Patch}.
