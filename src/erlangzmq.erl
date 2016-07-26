@@ -31,6 +31,8 @@
 
 -define(SUPERVISOR, erlangzmq_sup).
 
+-type version()::{Major::integer(), Minor::integer(), Patch::integer()}.
+
 %%
 %% OTP/Application behaviour
 %%
@@ -152,11 +154,11 @@ attach_resource(ResourcePid, Resource, SocketPid) ->
     gen_server:cast(ResourcePid, {attach, Resource, SocketPid}).
 
 
--spec version() -> {Major::integer(), Minor::integer(), Patch::integer()}.
+-spec version() -> {ok, Version::version()} | {error, Reason::atom()}.
 version() ->
   case application:get_application(erlangzmq) of
     {ok, erlangzmq} ->
-      return_version();
+      {ok, return_version()};
     undefined -> {error, application_not_started}
   end.
 
