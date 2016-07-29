@@ -68,12 +68,12 @@ peer_flags(#erlangzmq_sub{xsub=true}) ->
 peer_flags(_State) ->
     {sub, [incomming_queue]}.
 
-accept_peer(#erlangzmq_sub{peers=Peers, topics=Topics}=State, PeerPid) ->
-    send_subscriptions(Topics, PeerPid),
+accept_peer(#erlangzmq_sub{peers=Peers}=State, PeerPid) ->
     NewPeers = [PeerPid | Peers],
     {reply, {ok, PeerPid}, State#erlangzmq_sub{peers=NewPeers}}.
 
-peer_ready(State, _PeerPid, _Identity) ->
+peer_ready(#erlangzmq_sub{topics=Topics}=State, PeerPid, _Identity) ->
+    send_subscriptions(Topics, PeerPid),
     {noreply, State}.
 
 send(State, Data, From) ->
