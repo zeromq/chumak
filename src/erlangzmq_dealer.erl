@@ -30,10 +30,10 @@
          queue_ready/3, peer_disconected/2]).
 
 -record(erlangzmq_dealer, {
-          identity         :: string(),
-          lb               :: list(),
-          pending_recv=nil :: nil | atom(),
-          state=idle       :: idle | wait_req
+          identity          :: string(),
+          lb                :: list(),
+          pending_recv=none :: none | {from, From::term()},
+          state=idle        :: idle | wait_req
          }).
 
 valid_peer_type(rep)    -> valid;
@@ -77,7 +77,7 @@ send_multipart(#erlangzmq_dealer{lb=LB}=State, Multipart, From) ->
 recv_multipart(#erlangzmq_dealer{state=idle, lb=LB}=State, From) ->
     case erlangzmq_lb:get(LB) of
         none ->
-            {noreply, State#erlangzmq_dealer{state=wait_req, pending_recv=From}};
+            {noreply, State#erlangzmq_dealer{state=wait_req, pending_recv={from, From}}};
         {NewLB, PeerPid} ->
             direct_recv_multipart(State#erlangzmq_dealer{lb=NewLB}, PeerPid, PeerPid, From)
     end;
@@ -88,7 +88,7 @@ peer_recv_message(State, _Message, _From) ->
      %% This function will never called, because use incomming_queue property
     {noreply, State}.
 
-queue_ready(#erlangzmq_dealer{state=wait_req, pending_recv=PendingRecv}=State, _Identity, PeerPid) ->
+queue_ready(#erlangzmq_dealer{state=wait_req, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
     case erlangzmq_peer:incomming_queue_out(PeerPid) of
         {out, Messages} ->
             gen_server:reply(PendingRecv, {ok, Messages});
@@ -96,7 +96,7 @@ queue_ready(#erlangzmq_dealer{state=wait_req, pending_recv=PendingRecv}=State, _
             gen_server:reply(PendingRecv, {error, queue_empty})
     end,
 
-    FutureState = State#erlangzmq_dealer{state=idle, pending_recv=nil},
+    FutureState = State#erlangzmq_dealer{state=idle, pending_recv=none},
     {noreply, FutureState};
 
 queue_ready(State, _Identity, _PeerPid) ->
@@ -115,7 +115,7 @@ direct_recv_multipart(#erlangzmq_dealer{lb=LB}=State, FirstPeerPid, PeerPid, Fro
         empty ->
             case erlangzmq_lb:get(LB) of
                 {NewLB, FirstPeerPid} ->
-                    {noreply, State#erlangzmq_dealer{state=wait_req, pending_recv=From, lb=NewLB}};
+                    {noreply, State#erlangzmq_dealer{state=wait_req, pending_recv={from, From}, lb=NewLB}};
                 {NewLB, OtherPeerPid} ->
                     direct_recv_multipart(State#erlangzmq_dealer{lb=NewLB}, FirstPeerPid, OtherPeerPid, From)
             end

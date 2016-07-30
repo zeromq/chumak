@@ -28,7 +28,7 @@
         ]).
 
 -record(ready, {
-          socket_type=nil :: socket_type(),
+          socket_type=nil :: nil | socket_type(),
           identity=""     :: string(),
           resource=""     :: string(),
           metadata=#{}    :: map()

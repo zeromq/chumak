@@ -31,8 +31,8 @@
 
 -record(erlangzmq_pull, {
           identity               :: string(),
-          pending_recv           :: nil | pid(),
-          pending_recv_multipart :: nil | pid(),
+          pending_recv           :: nil | {from, From::term()},
+          pending_recv_multipart :: nil | {from, From::term()},
           recv_queue             :: queue:queue()
          }).
 
@@ -66,7 +66,7 @@ recv(#erlangzmq_pull{pending_recv=nil, pending_recv_multipart=nil}=State, From) 
             Msg = binary:list_to_bin(Multipart),
             {reply, {ok, Msg}, State#erlangzmq_pull{recv_queue=NewRecvQueue}};
         {empty, _RecvQueue} ->
-            {noreply, State#erlangzmq_pull{pending_recv=From}}
+            {noreply, State#erlangzmq_pull{pending_recv={from, From}}}
     end;
 
 recv(State, _From) ->
@@ -81,7 +81,7 @@ recv_multipart(#erlangzmq_pull{pending_recv=nil, pending_recv_multipart=nil}=Sta
             {reply, {ok, Multipart}, State#erlangzmq_pull{recv_queue=NewRecvQueue}};
 
         {empty, _RecvQueue} ->
-            {noreply, State#erlangzmq_pull{pending_recv_multipart=From}}
+            {noreply, State#erlangzmq_pull{pending_recv_multipart={from, From}}}
     end;
 
 recv_multipart(State, _From) ->
@@ -97,14 +97,14 @@ queue_ready(#erlangzmq_pull{pending_recv=nil, pending_recv_multipart=nil}=State,
     {noreply, State#erlangzmq_pull{recv_queue=NewRecvQueue}};
 
 %% when pending recv
-queue_ready(#erlangzmq_pull{pending_recv=PendingRecv, pending_recv_multipart=nil}=State, _Identity, PeerPid) ->
+queue_ready(#erlangzmq_pull{pending_recv={from, PendingRecv}, pending_recv_multipart=nil}=State, _Identity, PeerPid) ->
     {out, Multipart} = erlangzmq_peer:incomming_queue_out(PeerPid),
     Msg = binary:list_to_bin(Multipart),
     gen_server:reply(PendingRecv, {ok, Msg}),
     {noreply, State#erlangzmq_pull{pending_recv=nil}};
 
 %% when pending recv_multipart
-queue_ready(#erlangzmq_pull{pending_recv=nil, pending_recv_multipart=PendingRecv}=State, _Identity, PeerPid) ->
+queue_ready(#erlangzmq_pull{pending_recv=nil, pending_recv_multipart={from, PendingRecv}}=State, _Identity, PeerPid) ->
     {out, Multipart} = erlangzmq_peer:incomming_queue_out(PeerPid),
     gen_server:reply(PendingRecv, {ok, Multipart}),
     {noreply, State#erlangzmq_pull{pending_recv_multipart=nil}}.

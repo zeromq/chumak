@@ -31,7 +31,7 @@
 %% state for a pattern always to be module name.
 -record(erlangzmq_rep, {
           identity           :: string(),
-          pending_recv=nil   :: nil | atom(),
+          pending_recv=nil   :: nil | {from, From::term()},
           state=idle         :: idle | wait_req,
           lb                 :: list(),
           last_recv_peer=nil :: nil | pid()
@@ -71,7 +71,7 @@ send(#erlangzmq_rep{last_recv_peer=LastRecvPeer}=State, Data, _From)
 recv(#erlangzmq_rep{state=idle, lb=LB}=State, From) ->
     case erlangzmq_lb:get(LB) of
         none ->
-            {noreply, State#erlangzmq_rep{state=wait_req, pending_recv=From}};
+            {noreply, State#erlangzmq_rep{state=wait_req, pending_recv={from, From}}};
         {NewLB, PeerPid} ->
             direct_recv(State#erlangzmq_rep{lb=NewLB}, PeerPid, PeerPid, From)
     end;
@@ -89,7 +89,7 @@ peer_recv_message(State, _Message, _From) ->
     %% This function will never called, because use incomming_queue property
     {noreply, State}.
 
-queue_ready(#erlangzmq_rep{state=wait_req, pending_recv=PendingRecv}=State, _Identity, PeerPid) ->
+queue_ready(#erlangzmq_rep{state=wait_req, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
     FutureState = State#erlangzmq_rep{state=idle, pending_recv=nil},
     case recv_from_peer(PeerPid) of
         {ok, Message} ->
@@ -125,7 +125,7 @@ direct_recv(#erlangzmq_rep{lb=LB}=State, FirstPeerPid, PeerPid, From) ->
         empty ->
             case erlangzmq_lb:get(LB) of
                 {NewLB, FirstPeerPid} ->
-                    {noreply, State#erlangzmq_rep{state=wait_req, pending_recv=From, lb=NewLB}};
+                    {noreply, State#erlangzmq_rep{state=wait_req, pending_recv={from, From}, lb=NewLB}};
                 {NewLB, OtherPeerPid} ->
                     direct_recv(State#erlangzmq_rep{lb=NewLB}, FirstPeerPid, OtherPeerPid, From)
             end

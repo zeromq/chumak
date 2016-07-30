@@ -44,12 +44,12 @@
 -define(LARGE_COMMAND, 6).
 
 -record(decoder, {
-          state=initial :: decoder_state(), %% the state of decoder
-          size=0        :: integer(),
-          buffer=nil    :: binary(),
-          next_state    :: decoder_state(),
-          version_major :: integer(),       %% number of the major version
-          version_minor :: integer()        %% number of the minor version
+          state=initial     :: decoder_state(), %% the state of decoder
+          size=0            :: integer(),
+          buffer=nil        :: nil | binary(),
+          next_state=nil    :: nil | decoder_state(),
+          version_major=nil :: nil | {some, integer()},       %% number of the major version
+          version_minor=nil :: nil | {some, integer()}        %% number of the minor version
          }).
 
 -record(message,{
@@ -62,16 +62,16 @@
 -type decoder_state() :: 'initial' | 'waiting_minor_version' | 'waiting_mechanism' |
                          'waiting_as_server' | 'waiting_filler' | 'ready' |
                          'command_ready' | 'message_ready' | 'require_size'. %% the state of decoder
--type decoder_version() :: {MajorVersion::integer(), MinorVersion::integer}.
+-type decoder_version() :: {MajorVersion::integer(), MinorVersion::integer()}.
 -type frame() :: binary().  %% the bytes received or sent
 -type invalid_version() :: {invalid_version, Major::atom()}.
 -type invalid_mechanism() :: {mechanism_not_supported_yet, Mechanism::atom()}.
--type bad_greeting_frame() :: {bad_greeting_frame, Frame::binary}.
+-type bad_greeting_frame() :: {bad_greeting_frame, Frame::binary()}.
 -type decode_reason() :: bad_greeting_frame() | invalid_version() | invalid_mechanism(). %% decode fail reason
 
 -type decoder_ready() :: {ready, UpdatedDecoder::decoder()}. %% returned when decoder was finished greeting part.
 -type decoder_ok()    :: {ok, UpdatedDecoder::decoder()}.    %% returned when decoder only decoded the frame.
--type decoder_cmds()  :: {ok, UpdatedDecoder::decoder(), [Command::list()]}. %% returned when decoder was found one or more commands.
+-type decoder_cmds()  :: {ok, UpdatedDecoder::decoder(), [Command::term()]}. %% returned when decoder was found one or more commands.
 -type decoder_error() :: {error, Reason::decode_reason()}.
 -type decoder_reply() :: decoder_ready() | decoder_ok() | decoder_cmds() | decoder_error(). %% reply of decoder command
 
@@ -176,7 +176,7 @@ decode(#decoder{state=require_size}=Decoder, Frame) ->
 decode(#decoder{state=initial}=Decoder, Frame) when byte_size(Frame) >= ?SIGNATURE_SIZE->
     case Frame of
         <<16#ff, _Padding:64/bitstring, 16#7f, VersionMajor, RemaingFrame/binary>> when VersionMajor >= ?PROTOCOL_MAJOR ->
-            continue_decode(Decoder#decoder{state=waiting_minor_version, version_major=VersionMajor}, RemaingFrame);
+            continue_decode(Decoder#decoder{state=waiting_minor_version, version_major={some, VersionMajor}}, RemaingFrame);
         <<16#ff, _Padding:64/bitstring, 16#7f, VersionMajor, _RemaingFrame/binary>> ->
             {error, {invalid_version, VersionMajor}};
         X ->
@@ -190,7 +190,7 @@ decode(#decoder{state=initial}=Decoder, Frame) ->
 decode(#decoder{state=waiting_minor_version}=Decoder, Frame) ->
     case Frame of
         <<VersionMinor, RemaingFrame/binary>> ->
-            continue_decode(Decoder#decoder{state=waiting_mechanism, version_minor=VersionMinor}, RemaingFrame);
+            continue_decode(Decoder#decoder{state=waiting_mechanism, version_minor={some, VersionMinor}}, RemaingFrame);
         X ->
             {error, {bad_greeting_frame, X}}
     end;
@@ -239,7 +239,7 @@ decoder_state(#decoder{state=State}) ->
 
 %% @doc decoder_version returns the current version of decoder
 -spec decoder_version(Decoder::decoder()) -> State::decoder_version().
-decoder_version(#decoder{version_major=VersionMajor, version_minor=VersionMinor}) ->
+decoder_version(#decoder{version_major={some, VersionMajor}, version_minor={some, VersionMinor}}) ->
     {VersionMajor, VersionMinor}.
 
 %% @doc Return the current buffer of a decoder

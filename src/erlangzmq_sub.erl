@@ -34,7 +34,7 @@
           identity               :: string(),
           topics                 :: list(),
           peers                  :: list(),
-          pending_recv=nil       :: nil | atom(),
+          pending_recv=nil       :: nil | {from, From::term()},
           pending_recv_multipart :: nil | false | true,
           recv_queue             :: queue:queue(),
           xsub=false             :: true | false
@@ -86,7 +86,7 @@ recv(#erlangzmq_sub{pending_recv=nil, recv_queue=RecvQueue}=State, From) ->
             {reply, {ok, FullMsg}, State#erlangzmq_sub{recv_queue=NewRecvQueue}};
 
         {empty, _RecvQueue} ->
-            {noreply, State#erlangzmq_sub{pending_recv=From, pending_recv_multipart=false}}
+            {noreply, State#erlangzmq_sub{pending_recv={from, From}, pending_recv_multipart=false}}
     end;
 
 recv(State, _From) ->
@@ -107,7 +107,7 @@ recv_multipart(#erlangzmq_sub{pending_recv=nil, recv_queue=RecvQueue}=State, Fro
         {{value, Multipart}, NewRecvQueue} ->
             {reply, {ok, Multipart}, State#erlangzmq_sub{recv_queue=NewRecvQueue}};
         {empty, _RecvQueue} ->
-            {noreply, State#erlangzmq_sub{pending_recv=From, pending_recv_multipart=true}}
+            {noreply, State#erlangzmq_sub{pending_recv={from, From}, pending_recv_multipart=true}}
     end;
 
 recv_multipart(State, _From) ->
@@ -123,7 +123,7 @@ queue_ready(#erlangzmq_sub{recv_queue=RecvQueue, pending_recv=nil}=State, _Ident
     {noreply, State#erlangzmq_sub{recv_queue=NewRecvQueue}};
 
 queue_ready(State, _Identity, PeerPid) ->
-    #erlangzmq_sub{pending_recv=PendingRecv, pending_recv_multipart=IsPendingMultipart} = State,
+    #erlangzmq_sub{pending_recv={from, PendingRecv}, pending_recv_multipart=IsPendingMultipart} = State,
 
     {out, Multipart} = erlangzmq_peer:incomming_queue_out(PeerPid),
 

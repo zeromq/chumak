@@ -33,8 +33,8 @@
           identity         :: string(),
           subscriptions    :: #{PeerPid::pid => [Subscription::binary()]},
           xpub=false       :: false | true,
-          recv_queue       :: queue:queue(), %% only for xpub
-          pending_recv=nil :: nil | atom()
+          recv_queue=nil   :: nil | {some, queue:queue()}, %% only for xpub
+          pending_recv=nil :: nil | {from, From::term()}
          }).
 
 valid_peer_type(sub)    -> valid;
@@ -57,7 +57,7 @@ apply_opts(State, []) ->
 apply_opts(State, [xpub | Opts]) ->
     apply_opts(State#erlangzmq_pub{
                  xpub=true,
-                 recv_queue=queue:new()
+                 recv_queue={some, queue:new()}
                 }, Opts).
 
 peer_flags(#erlangzmq_pub{xpub=true}) ->
@@ -94,13 +94,13 @@ send_multipart(#erlangzmq_pub{subscriptions=Subscriptions}=State, Multipart, _Fr
 
     {reply, ok, State}.
 
-recv_multipart(#erlangzmq_pub{pending_recv=nil, xpub=true}=State, From) ->
-    case queue:out(State#erlangzmq_pub.recv_queue) of
+recv_multipart(#erlangzmq_pub{pending_recv=nil, xpub=true, recv_queue={some, RecvQueue}}=State, From) ->
+    case queue:out(RecvQueue) of
         {{value, Multipart}, NewRecvQueue} ->
-            {reply, {ok, Multipart}, State#erlangzmq_pub{recv_queue=NewRecvQueue}};
+            {reply, {ok, Multipart}, State#erlangzmq_pub{recv_queue={some, NewRecvQueue}}};
 
         {empty, _RecvQueue} ->
-            {noreply, State#erlangzmq_pub{pending_recv=From}}
+            {noreply, State#erlangzmq_pub{pending_recv={from, From}}}
     end;
 
 recv_multipart(#erlangzmq_pub{xpub=true}=State, _From) ->
@@ -113,13 +113,13 @@ peer_recv_message(State, _Message, _From) ->
      %% This function will never called, because use PUB not receive messages
     {noreply, State}.
 
-queue_ready(#erlangzmq_pub{xpub=true, pending_recv=nil}=State, _Identity, PeerPid) ->
+queue_ready(#erlangzmq_pub{xpub=true, pending_recv=nil, recv_queue={some, RecvQueue}}=State, _Identity, PeerPid) ->
     %% queue ready for XPUB pattern
     {out, Messages} = erlangzmq_peer:incomming_queue_out(PeerPid),
-    NewRecvQueue = queue:in(Messages, State#erlangzmq_pub.recv_queue),
-    {noreply, State#erlangzmq_pub{recv_queue=NewRecvQueue}};
+    NewRecvQueue = queue:in(Messages, RecvQueue),
+    {noreply, State#erlangzmq_pub{recv_queue={some, NewRecvQueue}}};
 
-queue_ready(#erlangzmq_pub{xpub=true, pending_recv=PendingRecv}=State, _Identity, PeerPid) ->
+queue_ready(#erlangzmq_pub{xpub=true, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
     {out, Multipart} = erlangzmq_peer:incomming_queue_out(PeerPid),
     gen_server:reply(PendingRecv, {ok, Multipart}),
     {noreply, State#erlangzmq_pub{pending_recv=nil}};

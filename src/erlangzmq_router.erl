@@ -31,7 +31,7 @@
 -record(erlangzmq_router, {
           identity     :: string(),
           lbs,                         %% loadbalancers based on identity
-          pending_recv :: nil | pid(),
+          pending_recv :: nil | {from, From::term()},
           recv_queue   :: queue:queue()
 }).
 
@@ -85,7 +85,7 @@ recv_multipart(#erlangzmq_router{recv_queue=RecvQueue, pending_recv=nil}=State, 
         {{value, Multipart}, NewRecvQueue} ->
             {reply, {ok, Multipart}, State#erlangzmq_router{recv_queue=NewRecvQueue}};
         {empty, _RecvQueue} ->
-            {noreply, State#erlangzmq_router{pending_recv=From}}
+            {noreply, State#erlangzmq_router{pending_recv={from, From}}}
     end;
 recv_multipart(State, _From) ->
     {reply, {error, efsm}, State}.
@@ -99,7 +99,7 @@ queue_ready(#erlangzmq_router{recv_queue=RecvQueue, pending_recv=nil}=State, Ide
     NewRecvQueue = queue:in(MultiPart, RecvQueue),
     {noreply, State#erlangzmq_router{recv_queue=NewRecvQueue}};
 
-queue_ready(#erlangzmq_router{pending_recv=PendingRecv}=State, Identity, PeerPid) ->
+queue_ready(#erlangzmq_router{pending_recv={from, PendingRecv}}=State, Identity, PeerPid) ->
     MultiPart = recv_message(Identity, PeerPid),
     gen_server:reply(PendingRecv, {ok, MultiPart}),
     {noreply, State#erlangzmq_router{pending_recv=nil}}.
