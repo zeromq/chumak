@@ -33,7 +33,8 @@
 
 -type peer_step() :: waiting_peer | waiting_ready | ready. %% state of connection
 -type peer_opts() :: [PeerOpt::peer_opt()].
--type peer_opt()  :: incomming_queue.  %% if peer bufferize instead notify parent pid.
+-type peer_opt()  :: incomming_queue  %% if peer bufferize instead notify parent pid.
+                    | multi_socket_type. 
 
 -record(state, {
           step=waiting_ready  :: peer_step(),
@@ -44,9 +45,9 @@
           type                :: socket_type(),
           identity=""         :: string(),  %% identity for this peer
           peer_identity=""    :: string(),  %% identity of remote peet that peer will talking
-          peer_version        :: {number(), number()}, %% version of protocol that peer is talking
+          peer_version=nil    :: nil | {number(), number()}, %% version of protocol that peer is talking
           socket=nil          :: nil | gen_tcp:socket(),
-          decoder             :: erlangzmq_protocol:decoder(),
+          decoder=nil         :: nil | erlangzmq_protocol:decoder(),
           parent_pid          :: pid(),
           %% if incomming_queue is used these two properties will be used
           incomming_queue=nil :: nil | queue:queue(),
@@ -78,7 +79,7 @@ connect(Type, Protocol, Host, Port, Resource) ->
 
 
 %% @doc accept new peer from Listen Socket
--spec accept(Type::socket_type(),
+-spec accept(Type::socket_type() | none, %% none for multi socket type
              Socket::pid(),
              Opts::peer_opts()) ->
                     {ok, Pid::pid()} | {error, Reason::term()}.

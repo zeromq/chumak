@@ -46,12 +46,12 @@
 
 %% state for a pattern always to be module name.
 -record(erlangzmq_req, {
-          identity         :: string(),
-          lb               :: list(),
-          state=ready      :: req_state(),
-          last_peer_sent   :: pid(),
-          pending_recv=nil :: term(),
-          msg_buf=[]       :: list()
+          identity           :: string(),
+          lb                 :: list(),
+          state=ready        :: req_state(),
+          last_peer_sent=nil :: nil | pid(),
+          pending_recv=nil   :: term(),
+          msg_buf=[]         :: list()
 }).
 
 valid_peer_type(rep)    -> valid;
