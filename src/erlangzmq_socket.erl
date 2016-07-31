@@ -21,6 +21,7 @@
 -module(erlangzmq_socket).
 -behaviour(gen_server).
 
+-record(state, {socket, socket_state}).
 %% api behaviour
 -export([start_link/2]).
 
@@ -37,6 +38,7 @@ start_link(Type, Identity)
     gen_server:start_link(?MODULE, {Type, Identity}, []).
 
 
+
 %% gen_server implementation
 init({Type, Identity}) ->
     process_flag(trap_exit, true),
@@ -44,64 +46,43 @@ init({Type, Identity}) ->
         {error, Reason} ->
             {stop, Reason};
         ModuleName ->
-            ModuleName:init(Identity)
+            {ok, S} = ModuleName:init(Identity),
+            {ok, #state{socket=ModuleName, socket_state=S}}
     end.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 handle_call({connect, Protocol, Host, Port, Resource}, _From, State) ->
-    Module = module(State),
-    {SocketType, PeerOpts} = peer_flags(State),
-
-    case erlangzmq_peer:connect(SocketType, Protocol, Host, Port, Resource, PeerOpts) of
-        {ok, Pid} ->
-            Module:accept_peer(State, Pid);
-        {error, Reason} ->
-            {reply, {error, Reason}, State}
-    end;
+    connect(Protocol, Host, Port, Resource, State);
 
 handle_call({accept, SocketPid}, _From, State) ->
-    Module = module(State),
-    {SocketType, PeerOpts} = peer_flags(State),
-
-    case erlangzmq_peer:accept(SocketType, SocketPid, PeerOpts) of
-        {ok, Pid} ->
-            Module:accept_peer(State, Pid);
-        {error, Reason} ->
-            {reply, {error, Reason}, State}
-    end;
+    accept(SocketPid, State);
 
 handle_call({send, Data}, From, State) ->
-    Module = module(State),
-    Module:send(State, Data, From);
+    send(Data, From, State);
 
 handle_call(recv, From, State) ->
-    Module = module(State),
-    Module:recv(State, From);
-
+    recv(From, State);
 
 handle_call({send_multipart, Multipart}, From, State) ->
-    Module = module(State),
-    Module:send_multipart(State, Multipart, From);
+    send_multipart(Multipart, From, State);
 
 handle_call(recv_multipart, From, State) ->
-    Module = module(State),
-    Module:recv_multipart(State, From);
+    recv_multipart(From, State);
 
 handle_call({bind, tcp, Host, Port}, _From, State) ->
     Reply = erlangzmq_bind:start_link(Host, Port),
     {reply, Reply, State};
 
 handle_call(get_flags, _From, State) ->
-    {reply, peer_flags(State), State};
+    get_flags(State);
 
 handle_call({bind, Protocol, _Host, _Port}, _From, State) ->
     {reply, {error, {unsupported_protocol, Protocol}}, State}.
 
 handle_cast({peer_ready, From, Identity}, State) ->
-    Module = module(State),
-    Module:peer_ready(State, From, Identity);
+    peer_ready(From, Identity, State);
 
 handle_cast({subscribe, Topic}, State) ->
     pattern_support(State, subscribe, [Topic]);
@@ -127,16 +108,13 @@ handle_cast(CastMsg, State) ->
     {noreply, State}.
 
 handle_info({peer_recv_message, Message, From}, State) ->
-    Module = module(State),
-    Module:peer_recv_message(State, Message, From);
+    peer_recv_message(Message, From, State);
 
 handle_info({queue_ready, Identity, From}, State) ->
-    Module = module(State),
-    Module:queue_ready(State, Identity, From);
+    queue_ready(Identity, From, State);
 
 handle_info({'EXIT', PeerPid, {shutdown, _Reason}}, State) ->
-    Module = module(State),
-    Module:peer_disconected(State, PeerPid);
+    exit_peer(PeerPid, State);
 
 handle_info(InfoMsg, State) ->
     error_logger:info_report([
@@ -151,37 +129,70 @@ terminate(_Reason, _State) ->
     ok.
 
 %% private api
-module(State) ->
-    %% module pattern that handling this request MUST to be first value
-    %% of the state
-    element(1, State).
 
-identity(State) ->
-    %% identity of pattern that handling this request MUST to be second value
-    %% of the state
-    element(2, State).
+%% Take the sockets reply, and apply it to our state, while returning the reply.
+store({reply, M, S}, State) -> {reply, M, State#state{socket_state=S}};
+store({noreply, S}, State) -> {noreply, State#state{socket_state=S}}.
 
-peer_flags(State) ->
-    Module = module(State),
-    {SocketType, PeerOpts} = Module:peer_flags(State),
-    Identity = identity(State),
-    {SocketType, [{identity, Identity} | PeerOpts]}.
+connect(Protocol, Host, Port, Resource, #state{socket=S, socket_state=T}=State) ->
+    {SocketType, PeerOpts} = peer_flags(S, T),
 
+    case erlangzmq_peer:connect(SocketType, Protocol, Host, Port, Resource, PeerOpts) of
+        {ok, Pid} ->
+            Reply = S:accept_peer(T, Pid),
+            store(Reply, State);
+        {error, Reason} ->
+            {reply, {error, Reason}, State}
+    end.
+
+accept(SocketPid, #state{socket=S, socket_state=T}=State) ->
+    {SocketType, PeerOpts} = peer_flags(S, T),
+
+    case erlangzmq_peer:accept(SocketType, SocketPid, PeerOpts) of
+        {ok, Pid} ->
+            Reply = S:accept_peer(T, Pid),
+            store(Reply, State);
+        {error, Reason} ->
+            {reply, {error, Reason}, State}
+    end.
+
+send(Data, From, #state{socket=S, socket_state=T}=State) ->
+    Reply = S:send(T, Data, From),
+    store(Reply, State).
+
+recv(From, #state{socket=S, socket_state=T}=State) ->
+    Reply = S:recv(T, From),
+    store(Reply, State).
+
+send_multipart(Multipart, From, #state{socket=S, socket_state=T}=State) ->
+    Reply = S:send_multipart(T, Multipart, From),
+    store(Reply, State).
+
+recv_multipart(From, #state{socket=S, socket_state=T}=State) ->
+    Reply = S:recv_multipart(T, From), 
+    store(Reply, State).
+
+get_flags(#state{socket=S, socket_state=T}=State) ->
+    {reply, peer_flags(S, T), State}.
+
+peer_ready(From, Identity, #state{socket=S, socket_state=T}=State) ->
+    Reply = S:peer_ready(T, From, Identity),
+    store(Reply, State).
+ 
 pattern_support(State, Function, Args) ->
     pattern_support(State, Function, Args, warn).
 
-pattern_support(State, Function, Args, Alert) ->
-    Module = module(State),
-    IsExported = erlang:function_exported(Module, Function, length(Args) + 1),
+pattern_support(#state{socket=S, socket_state=T}=State, Function, Args, Alert) ->
+    IsExported = erlang:function_exported(S, Function, length(Args) + 1),
 
     case {IsExported, Alert} of
         {true, _} ->
-            apply(Module, Function, [State] ++ Args);
+            store(apply(S, Function, [T] ++ Args), State);
 
         {false, warn} ->
             error_logger:warning_report([
                                          pattern_not_supported,
-                                         {module, Module},
+                                         {module, S},
                                          {method, Function},
                                          {args, Args}
                                         ]),
@@ -190,3 +201,21 @@ pattern_support(State, Function, Args, Alert) ->
         {false, _} ->
             {noreply, State}
     end.
+
+peer_recv_message(Message, From, #state{socket=S, socket_state=T}=State) ->
+    Reply = S:peer_recv_message(T, Message, From),
+    store(Reply, State).
+
+queue_ready(Identity, From, #state{socket=S, socket_state=T}=State) ->
+    Reply = S:queue_ready(T, Identity, From),
+    store(Reply, State).
+
+exit_peer(PeerPid, #state{socket=S,  socket_state=T}=State) ->
+    Reply = S:peer_disconected(T, PeerPid),
+    store(Reply, State).
+
+peer_flags(Socket, SocketState) ->
+    {SocketType, PeerOpts} = Socket:peer_flags(SocketState),
+    Identity = Socket:identity(SocketState),
+    {SocketType, [{identity, Identity} | PeerOpts]}.
+

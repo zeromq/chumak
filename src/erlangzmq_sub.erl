@@ -27,7 +27,7 @@
          send/3, recv/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
          queue_ready/3, peer_disconected/2, subscribe/2, cancel/2,
-         peer_reconnected/2
+         peer_reconnected/2, identity/1
         ]).
 
 -record(erlangzmq_sub, {
@@ -62,6 +62,8 @@ apply_opts(State, []) ->
     State;
 apply_opts(State, [xsub | Opts]) ->
     apply_opts(State#erlangzmq_sub{xsub=true}, Opts).
+
+identity(#erlangzmq_sub{identity=Identity}) -> Identity.
 
 peer_flags(#erlangzmq_sub{xsub=true}) ->
     {xsub, [incomming_queue]};

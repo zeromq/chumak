@@ -26,7 +26,7 @@
 -export([valid_peer_type/1, init/1, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
-         queue_ready/3, peer_disconected/2]).
+         queue_ready/3, peer_disconected/2, identity/1]).
 
 %% The state of REQ pattern, lock-step fsm.
 %% +----------+    +---------------+    +------------------+    +-----------------------+    +----------+
@@ -65,6 +65,8 @@ init(Identity) ->
                msg_buf=[]
               },
     {ok, State}.
+
+identity(#erlangzmq_req{identity=I}) -> I.
 
 peer_flags(_State) ->
     {req, []}.
