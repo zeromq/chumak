@@ -26,7 +26,8 @@
 -export([valid_peer_type/1, init/1, init/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
-         queue_ready/3, peer_disconected/2, peer_subscribe/3, peer_cancel_subscribe/3
+         queue_ready/3, peer_disconected/2, peer_subscribe/3, peer_cancel_subscribe/3,
+         identity/1
         ]).
 
 -record(erlangzmq_pub, {
@@ -50,6 +51,8 @@ init(Identity, Opts) ->
                subscriptions=erlangzmq_subscriptions:new()
               },
     {ok, apply_opts(State, Opts)}.
+
+identity(#erlangzmq_pub{identity=I}) -> I.
 
 apply_opts(State, []) ->
     State;

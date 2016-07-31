@@ -34,6 +34,7 @@
 -callback peer_ready(State::pattern_state(), PeerPid::pid(), Identity::binary()) -> Reply::term().
 -callback send(State::pattern_state(), Data::binary(), From::term()) -> Reply::term().
 -callback recv(State::pattern_state(), From::term()) -> Reply::term().
+-callback identity(State::pattern_state()) -> Identity::string().
 
 %% Multipart support
 -callback send_multipart(State::pattern_state(), [Data::binary()], From::term()) -> Reply::term().
@@ -42,6 +43,7 @@
 -callback peer_recv_message(State::pattern_state(), Message::erlangzmq_protocol:message(), From::pid()) -> Reply::term().
 -callback queue_ready(State::pattern_state(), Identity::string(), From::pid()) -> Reply::term().
 -callback peer_disconected(State::pattern_state(), PeerPid::pid()) -> Reply::term().
+
 
 %% @doc find matching pattern for a socket type.
 -spec module(SocketType::socket_type()) -> module_name() | {error, invalid_socket_type}.
