@@ -132,15 +132,13 @@ along with erlangzmq.  If not, see <http://www.gnu.org/licenses/>
 Commercial License
 ------------------
 
-If you or your company would like to use _erlangzmq_ without the restrictions of AGPL, consider purchasing a commercial license.
-
-* The price for a commercial license is $99 USD.
-* If you are incorporated simply purchase four copies of the license.
-
-Contact us by email at contact@choven.ca for your copy of a commercial license.
-
+If you would like to use _erlangzmq_ without the restrictions of AGPL, please purchase a commercial license. The price for a commercial license is only $99 USD. You can [purchase the license here](http://choven.ca/#/softwaredev). Thanks for your support!
 
 Acknowledgements
 ----------------
 Our thanks to Wilson Júnior [Wpjunior](https://github.com/Wpjunior) for the great work he did on the initial
 version of the codebase.
+
+Contact
+-------
+You can contact a real human by emailing drozzy@choven.ca
