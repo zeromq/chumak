@@ -144,3 +144,10 @@ version of the codebase.
 Contact
 -------
 You can contact a real human by emailing drozzy@choven.ca
+
+Etymology
+---------
+From [Wikipedia](https://en.wikipedia.org/wiki/Chumak):
+
+>Chumak (Ukrainian: чумак) is a historic occupation on the territory of the modern Ukraine 
+>as merchants or traders, primarily known for the trade in salt.
