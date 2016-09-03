@@ -26,7 +26,8 @@ the sockets participate in.
 
 ![Entity Relationship Diagram](images/entities.png)
 
-Notation
---------
+About Diagrams
+--------------
 
-The notation used in diagrams follows the [FMC](http://www.fmc-modeling.org/notation_reference) standard.
+1. The notation used in diagrams follows the [FMC](http://www.fmc-modeling.org/notation_reference) standard.
+2. Diagrams can be modified with draw.io. The source can be found in [docs/src](src).
