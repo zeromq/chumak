@@ -1,6 +1,8 @@
 chumak 
 =========
 
+![Chumaki](docs/images/chumaki.jpg)
+
 What is chumak?
 -------------------
 
