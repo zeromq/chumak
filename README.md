@@ -27,10 +27,6 @@ Features
 10. Socket-Type Property & Identity Property
 11. Backwards Interoperability with ZMTP 3.0
 
-Not implemented
---------------
-1. CurveZMQ - security is not currently implemented. As a work-around, consider
-using a proxy running [libzmq](https://github.com/zeromq/libzmq).
 
 Install
 -------
@@ -86,9 +82,6 @@ Contributing
 
 See  [Contributing](CONTRIBUTING.md).
 
-Copyright
-----------
-Copyright [Choven Corp.](http://choven.ca) 2016. All Rights Reserved.
 
 FAQ
 ---
@@ -96,54 +89,24 @@ FAQ
 
    Because the existing Erlang implementations and bindings are out of date.
 
+2. Can I use `chumak` for free?
 
-2. Why a dual-license?
+   Yes, as long as you abide by the terms of the [MPLv2 license](LICENSE). In short, you can include this code as a part of a larger work, even commercial. It is only when you modify `chumak` source code itself that you have to make that change available. Please read the license, as this description is not complete by any means.
 
-   To keep the code up-to-date. Having a commercial license allows us to charge money for code. Erlang is not a very
-   trendy language, so the number of contributors to the open source project
-   like this is small. In order to keep it from dying, we think it makes sense
-   to run it as a commercial project.
+3. Do I have to sign over my copyright when contributing?
 
-3. Can I use `chumak` for free?
+   No. Everyone owns the piece of code they contribute.
+   Please see [Contributing](CONTRIBUTING.md) for details.
 
-   Yes, as long as you abide by the terms of the [AGPL license](COPYING.txt). In short, AGPL is a viral license,
-   in that any code it touches has to be similarly licensed. So if you are working on an open-source project
-   which has a [compatible](https://www.gnu.org/licenses/license-list.en.html) license, you can use `chumak`. For more information see the [license](COPYING.txt) terms.
 
-3. Why do I have to sign over my copyright when contributing?
-
-   Short answer: for us to make money. Long answer: without your copyright, we could
-   not dual-license the code, see "Why a dual-license?" above.
-
+Future work
+------------
+1. CurveZMQ - add security, with which chumak is compatible.
 
 License
 --------
-chumak is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-chumak is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with chumak.  If not, see <http://www.gnu.org/licenses/>
-
-Commercial License
-------------------
-
-If you would like to use _chumak_ without the restrictions of AGPL, please purchase a commercial license [here](http://choven.ca/#/softwaredev).
-
-Acknowledgements
-----------------
-Our thanks to Wilson Júnior [Wpjunior](https://github.com/Wpjunior) for the great work he did on the initial
-version of the codebase.
-
-Contact
--------
-You can contact a real human by emailing drozzy@choven.ca
+This project is licensed under Mozilla Public License Version 2.0.
+See [license](LICENSE) for complete license terms.
 
 Etymology
 ---------
