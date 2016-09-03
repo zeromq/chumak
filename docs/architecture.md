@@ -9,14 +9,14 @@ System Overview
 
 The system map below presents an overview of the system.
 
-![System Map](images/erlangzmq_system_map.png)
+![System Map](images/system_map.png)
 
 Sockets
 -------
 
 Each socket creates a peer process for each remote peer it communicates with.
 
-![Socket Composition Diagram](images/erlangzmq_socket.png)
+![Socket Composition Diagram](images/socket.png)
 
 Entity Relationship Diagrams
 ----------------------------
@@ -24,7 +24,7 @@ Entity Relationship Diagrams
 Here we can see different types of sockets and also which relationships
 the sockets participate in.
 
-![Entity Relationship Diagram](images/erlangzmq_entities.png)
+![Entity Relationship Diagram](images/entities.png)
 
 Notation
 --------

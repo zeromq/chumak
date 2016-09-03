@@ -1,6 +1,6 @@
 .PHONY: *.erl
 
-RUN_ARGS = erl -pa ../_build/default/lib/erlangzmq/ebin -eval
+RUN_ARGS = erl -pa ../_build/default/lib/chumak/ebin -eval
 
 *.erl:
 	erlc $@

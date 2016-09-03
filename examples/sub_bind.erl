@@ -5,11 +5,11 @@
 -export([main/0]).
 
 main() ->
-    application:start(erlangzmq),
-    {ok, Socket} = erlangzmq:socket(sub),
+    application:start(chumak),
+    {ok, Socket} = chumak:socket(sub),
     Topic = <<" ">>,
-    erlangzmq:subscribe(Socket, Topic),
-    case erlangzmq:bind(Socket, tcp, "localhost", 5555) of
+    chumak:subscribe(Socket, Topic),
+    case chumak:bind(Socket, tcp, "localhost", 5555) of
         {ok, _BindPid} ->
             io:format("Binding OK with Pid: ~p\n", [Socket]);
         {error, Reason} ->
@@ -20,6 +20,6 @@ main() ->
     loop(Socket).
 
 loop(Socket) ->
-    {ok, Data1} = erlangzmq:recv(Socket),
+    {ok, Data1} = chumak:recv(Socket),
     io:format("Received ~p\n", [Data1]),
     loop(Socket).

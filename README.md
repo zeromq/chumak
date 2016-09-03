@@ -1,15 +1,15 @@
-erlangzmq 
+chumak 
 =========
 
-What is erlangzmq?
+What is chumak?
 -------------------
 
-`erlangzmq` is a library written in [Erlang](https://www.erlang.org/). It implements the ZeroMQ Message Transport Protocol (ZMTP). `erlangzmq` supports ZMTP version [3.1](http://rfc.zeromq.org/spec:37/ZMTP/).
+`chumak` is a library written in [Erlang](https://www.erlang.org/). It implements the ZeroMQ Message Transport Protocol (ZMTP). `chumak` supports ZMTP version [3.1](http://rfc.zeromq.org/spec:37/ZMTP/).
 
 Goal
 ----
 
-The goal of `erlangzmq` application is to provide up-to-date native Erlang implementation of ZMTP.
+The goal of `chumak` application is to provide up-to-date native Erlang implementation of ZMTP.
 
 Features
 --------
@@ -33,11 +33,11 @@ using a proxy running [libzmq](https://github.com/zeromq/libzmq).
 Install
 -------
 
-You can install `erlangzmq` from Hex: https://hex.pm/packages/erlangzmq or by referencing a specific tag directly:
+You can install `chumak` from Hex: https://hex.pm/packages/chumak or by referencing a specific tag directly:
 
 ```
 {deps,[
-  {erlangzmq, {git, "git@github.com:chovencorp/erlangzmq.git", {tag, "1.0.0"}}}  
+  {chumak, {git, "git@github.com:chovencorp/chumak.git", {tag, "1.0.0"}}}  
 ]}.
 ```
 
@@ -46,9 +46,9 @@ For more info on rebar3 dependencies see the [rebar3 docs](http://www.rebar3.org
 Usage
 -----
 
-See [examples](https://github.com/chovencorp/erlangzmq/tree/master/examples). Otherwise use just like a regular Erlang/OTP application.
+See [examples](https://github.com/chovencorp/chumak/tree/master/examples). Otherwise use just like a regular Erlang/OTP application.
 
-If you would like to use [python tests](https://github.com/chovencorp/erlangzmq/tree/master/python-test) to try language interop, you need to have [pyzmq](https://github.com/zeromq/pyzmq) installed. 
+If you would like to use [python tests](https://github.com/chovencorp/chumak/tree/master/python-test) to try language interop, you need to have [pyzmq](https://github.com/zeromq/pyzmq) installed. 
 
 Build
 -----
@@ -102,11 +102,11 @@ FAQ
    like this is small. In order to keep it from dying, we think it makes sense
    to run it as a commercial project.
 
-3. Can I use `erlangzmq` for free?
+3. Can I use `chumak` for free?
 
    Yes, as long as you abide by the terms of the [AGPL license](COPYING.txt). In short, AGPL is a viral license,
    in that any code it touches has to be similarly licensed. So if you are working on an open-source project
-   which has a [compatible](https://www.gnu.org/licenses/license-list.en.html) license, you can use `erlangzmq`. For more information see the [license](COPYING.txt) terms.
+   which has a [compatible](https://www.gnu.org/licenses/license-list.en.html) license, you can use `chumak`. For more information see the [license](COPYING.txt) terms.
 
 3. Why do I have to sign over my copyright when contributing?
 
@@ -116,23 +116,23 @@ FAQ
 
 License
 --------
-erlangzmq is free software: you can redistribute it and/or modify
+chumak is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-erlangzmq is distributed in the hope that it will be useful,
+chumak is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
-along with erlangzmq.  If not, see <http://www.gnu.org/licenses/>
+along with chumak.  If not, see <http://www.gnu.org/licenses/>
 
 Commercial License
 ------------------
 
-If you would like to use _erlangzmq_ without the restrictions of AGPL, please purchase a commercial license [here](http://choven.ca/#/softwaredev).
+If you would like to use _chumak_ without the restrictions of AGPL, please purchase a commercial license [here](http://choven.ca/#/softwaredev).
 
 Acknowledgements
 ----------------
