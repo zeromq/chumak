@@ -31,7 +31,7 @@ Features
 Install
 -------
 
-You can install `chumak` from [hex.pm](https://hex.pm/packages/chumak)
+You can install `chumak` from [hex.pm](https://hex.pm/packages/chumak) by including the following in your `rebar.config`:
 
 ```
 {deps,[
