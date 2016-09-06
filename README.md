@@ -31,13 +31,14 @@ Features
 Install
 -------
 
-You can install `chumak` from Hex: https://hex.pm/packages/chumak or by referencing a specific tag directly:
+You can install `chumak` from [hex.pm](https://hex.pm/packages/chumak) by including the following in your `rebar.config`:
 
 ```
 {deps,[
-  {chumak, {git, "git@github.com:chovencorp/chumak.git", {tag, "1.0.0"}}}  
+	{chumak, "X.Y.Z"}
 ]}.
 ```
+where _X.Y.Z_ is one of the [release versions](https://github.com/chovencorp/chumak/releases).
 
 For more info on rebar3 dependencies see the [rebar3 docs](http://www.rebar3.org/docs/dependencies).
 
