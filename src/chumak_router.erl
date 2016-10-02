@@ -94,7 +94,7 @@ queue_ready(#chumak_router{pending_recv={from, PendingRecv}}=State, Identity, Pe
     {noreply, State#chumak_router{pending_recv=nil}}.
 
 peer_disconected(#chumak_router{lbs=LBs}=State, PeerPid) ->
-    NewLBs = chumak_lb:delete(LBs, PeerPid),
+    NewLBs = chumak_lbs:delete(LBs, PeerPid),
     {noreply, State#chumak_router{lbs=NewLBs}}.
 
 recv_message(Identity, PeerPid) ->
