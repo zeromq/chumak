@@ -21,8 +21,14 @@
 -type peer_step() :: waiting_peer | waiting_ready | ready. %% state of connection
 -type peer_opts() :: [PeerOpt::peer_opt()].
 -type peer_opt()  :: incomming_queue  %% if peer bufferize instead notify parent pid.
-                    | multi_socket_type. 
+                    | multi_socket_type
+                    | {curve_server, boolean()}
+                    | {curve_publickey, binary()}
+                    | {curve_secretkey, binary()}
+                    | {curve_serverkey, binary()}.
 
+-type handshake_data() :: {error, term()} | 
+                          {ready, map()}.
 -record(state, {
           step=waiting_ready  :: peer_step(),
           host                :: nil | string(),
@@ -41,8 +47,12 @@
           msg_buf=[]          :: list(), %% used to bufferize msg until last message found
           %% pub compatible layer is used to wrap the received messages
           pub_compatible_layer=false :: false | true,
-          multi_socket_type=false    :: false | true
-         }).
+          multi_socket_type=false    :: false | true,
+          as_server=false     :: boolean(),
+          mechanism=null      :: security_mechanism(),
+          security_data=#{}   :: chumak_curve:curve_data() | #{}}).
+
+-type state() :: #state{}.
 
 %% @doc connect into a peer
 -spec connect(Type::socket_type(),
@@ -77,7 +87,7 @@ accept(Type, Socket) ->
     accept(Type, Socket, []).
 
 %% @doc send Data to the peer
--spec send(PeerPid::pid(), Data::binary(), Client::term()) -> ok.
+-spec send(PeerPid::pid(), [Data::binary()], Client::term()) -> ok.
 send(PeerPid, Data, Client) ->
     gen_server:cast(PeerPid, {send, Data, Client}).
 
@@ -140,26 +150,28 @@ handle_call(incomming_queue_out, _From, #state{incomming_queue=IncommingQueue}=S
 
 
 %% @hidden
-handle_cast({send, Data, Client}, #state{socket=Socket, step=ready}=State) ->
+handle_cast({send, Multipart, Client}, #state{socket=Socket, 
+                                              mechanism = Mechanism,
+                                              security_data = Security_data,
+                                              step=ready}=State) ->
+    {Data, NewSecurityData} 
+       = chumak_protocol:encode_message_multipart(Multipart, Mechanism, 
+                                                  Security_data),
     case gen_tcp:send(Socket, Data) of
         ok ->
             gen_server:reply(Client, ok);
         {error, Reason}->
             gen_server:reply(Client, {error, Reason})
-
     end,
-    {noreply, State};
-handle_cast({send, Data}, #state{socket=Socket, step=ready}=State) ->
-    case gen_tcp:send(Socket, Data) of
-        ok ->
-            ok;
-        {error, Reason}->
-            error_logger:warning_report([
-                                         send_error,
-                                         {error, Reason}
-                                        ])
-    end,
-    {noreply, State};
+    {noreply, State#state{security_data = NewSecurityData}};
+handle_cast({send, Multipart}, #state{mechanism = Mechanism,
+                                      security_data = SecurityData,
+                                      step=ready}=State) ->
+    {Data, NewSecurityData} = 
+        chumak_protocol:encode_message_multipart(Multipart, 
+                                                 Mechanism, 
+                                                 SecurityData),
+    send_data(Data, State#state{security_data = NewSecurityData});
 
 handle_cast({send_error, ReasonMsg}, #state{socket=Socket}=State) ->
     send_error_to_socket(Socket, ReasonMsg),
@@ -168,22 +180,22 @@ handle_cast({send_error, ReasonMsg}, #state{socket=Socket}=State) ->
 handle_cast({send_subscription, Topic}, #state{peer_version={3, 0}}=State) ->
     %% compatibility layer to subscribe in old versions of ZeroMQ
     Frame = chumak_protocol:encode_old_subscribe(Topic),
-    handle_cast({send, Frame}, State);
+    send_data(Frame, State);
 
 handle_cast({send_subscription, Topic}, State) ->
     Command = chumak_command:encode_subscribe(Topic),
     Frame = chumak_protocol:encode_command(Command),
-    handle_cast({send, Frame}, State);
+    send_data(Frame, State);
 
 handle_cast({send_cancel_subscription, Topic}, #state{peer_version={3, 0}}=State) ->
     %% compatibility layer to unsubscribe in old versions of ZeroMQ
     Frame = chumak_protocol:encode_old_cancel(Topic),
-    handle_cast({send, Frame}, State);
+    send_data(Frame, State);
 
 handle_cast({send_cancel_subscription, Topic}, State) ->
     Command = chumak_command:encode_cancel(Topic),
     Frame = chumak_protocol:encode_command(Command),
-    handle_cast({send, Frame}, State);
+    send_data(Frame, State);
 
 handle_cast(connect, State) ->
     try_connect(State);
@@ -223,7 +235,20 @@ terminate(_Reason, #state{socket=Socket}) ->
     ok.
 
 %% private methods
-try_connect(#state{host=Host, port=Port, parent_pid=ParentPid, socket=OldSocketPid}=State) ->
+send_data(Data, #state{socket = Socket} = State) ->
+    case gen_tcp:send(Socket, Data) of
+        ok ->
+            ok;
+        {error, Reason}->
+            error_logger:warning_report([
+                                         send_error,
+                                         {error, Reason}
+                                        ])
+    end,
+    {noreply, State}.
+
+try_connect(#state{host=Host, port=Port, parent_pid=ParentPid, 
+                   socket=OldSocketPid, security_data = CurveOptions}=State) ->
     case gen_tcp:connect(Host, Port, ?SOCKET_OPTS([])) of
         {ok, SocketPid} ->
             case OldSocketPid of
@@ -235,7 +260,7 @@ try_connect(#state{host=Host, port=Port, parent_pid=ParentPid, socket=OldSocketP
 
             NewState = State#state{
                          socket=SocketPid,
-                         decoder=chumak_protocol:new_decoder()
+                         decoder=chumak_protocol:new_decoder(CurveOptions)
                         },
             negotiate_greetings(NewState);
 
@@ -250,16 +275,19 @@ try_connect(#state{host=Host, port=Port, parent_pid=ParentPid, socket=OldSocketP
             try_connect(State)
     end.
 
-negotiate_greetings(#state{socket=Socket}=State) ->
+%% the result must be either:
+%% {noreply, NewState#state{decoder=NewDecoder, step=ready}};
+%% or:
+%% {stop, Error, State}
+negotiate_greetings(#state{socket=Socket, 
+                           mechanism = Mechanism,
+                           as_server=AsServer}=State) ->
     try
-        %% send and receives greeating bytes
-        ok = send_greetting_step(Socket),
+        %% send and receives greeting bytes
+        ok = send_greetting_step(Socket, AsServer, Mechanism),
         {ok, GreetingFrame} = gen_tcp:recv(Socket, 64, ?GREETINGS_TIMEOUT),
         {ready, NewDecoder} = chumak_protocol:decode(State#state.decoder, GreetingFrame),
-
-        %% send and receives ready command
-        negotiate_ready_command(State#state{decoder=NewDecoder})
-
+        verify_mechanism(State, NewDecoder)
     catch
         error:{badmatch, Error} ->
             error_logger:error_report([
@@ -269,59 +297,174 @@ negotiate_greetings(#state{socket=Socket}=State) ->
             {stop, Error, State}
     end.
 
-negotiate_ready_command(#state{socket=Socket, multi_socket_type=true}=State) ->
-    {ok, IncommingReadyFrame} = recv_ready_command(Socket),
-    {ok, NewDecoder, [ReadyCommand]} = chumak_protocol:decode(State#state.decoder, IncommingReadyFrame),
+verify_mechanism(#state{mechanism = Mechanism} = State, Decoder) ->
+    case chumak_protocol:decoder_mechanism(Decoder) of
+        Mechanism ->
+            verify_role(State, Decoder);
+        _ -> 
+            MismatchError = {server_error, "Security mechanism mismatch"},
+            error_logger:error_report([
+                                       negotiate_greetings_error,
+                                       {error, MismatchError}
+                                      ]),
+            {stop, {shutdown, MismatchError}, State}
+    end.
 
-    Resource = chumak_command:ready_resource(ReadyCommand),
-    ResourceRouterPid = State#state.parent_pid,
+verify_role(#state{mechanism = curve,
+                   as_server = _AsServer} = State, Decoder) ->
+    case chumak_protocol:decoder_as_server(Decoder) of
+        %% From the interworking tests I can only conclude
+        %% that this does not work as I expected.
+        %% %% Each peer must have it's own role
+        %% AsServer ->
+            %% MismatchError = {server_error, "Role (as-server) mismatch"},
+            %% error_logger:error_report([
+                                       %% negotiate_greetings_error,
+                                       %% {error, MismatchError}
+                                      %% ]),
+            %% {stop, {shutdown, MismatchError}, State};
+        _ ->
+            do_handshake(State, Decoder)
+    end;
+verify_role(State, Decoder) ->
+    do_handshake(State, Decoder).
 
+do_handshake(#state{socket = Socket} = State, Decoder) -> 
+    PeerVersion = chumak_protocol:decoder_version(Decoder),
+    case handshake(State#state{decoder = Decoder,
+                               peer_version = PeerVersion}) of
+        {ok, NewState} ->
+            %% turn on connection async
+            ok = gen_tcp:controlling_process(Socket, self()),
+            ok = inet:setopts(Socket, [{active, once}]),
+            {noreply, NewState};
+        {error, Err, NewState} ->
+            {stop, Err, NewState}
+    end.
+
+-spec handshake(State::state()) -> 
+          {ok, state()} | {error, Reason::string(), state()}.
+%% As described in https://rfc.zeromq.org/spec:26/CURVEZMQ/
+handshake(#state{mechanism = curve, socket = Socket,
+                 as_server = AsServer, decoder = Decoder,
+                 identity = Identity, type = SocketType,
+                 resource = Resource} = State) ->
+    %% The handshake provides:
+    %% - security data: 
+    %%   - curve_data() in case of curve security, 
+    %%   - #{} in case of null security
+    %% - a "resource" if multi_socket_type == true
+    %% - socket type
+    %% - identity
+    SocketTypeBin = string:to_upper(atom_to_list(SocketType)),
+    Metadata = [{"Socket-Type", SocketTypeBin},
+                {"Identity", Identity},
+                {"Resource", Resource}],
+    {NewDecoder, HandshakeResponse}  = 
+        chumak_curve:security_handshake(Socket, Decoder, AsServer, Metadata),
+    handle_handshake_data(State#state{decoder = NewDecoder}, HandshakeResponse);
+    
+handshake(#state{mechanism=null, socket = Socket, 
+                 decoder = Decoder, conn_side = Side} = State) ->
+    %% "Note that to avoid deadlocks, each peer MUST send its READY command 
+    %% before attempting to receive a READY from the other peer. In the NULL 
+    %% mechanism, peers are symmetric."
+    %% But later on in the example this appears to be contradicted. Client
+    %% must first send ready.
+    case Side of
+        client ->
+            ok = send_ready_command(State);
+        server ->
+            ok
+    end,
+    {ok, IncomingReadyFrame} = recv_ready_command(Socket),
+    {ok, NewDecoder, [ReadyCommand]} = chumak_protocol:decode(Decoder,
+                                                              IncomingReadyFrame),
+    case handle_handshake_data(State#state{decoder=NewDecoder}, 
+                               map_ready_command(ReadyCommand)) of
+        {ok, ReadyState} when Side =:= server ->
+            ok = send_ready_command(ReadyState),
+            {ok, ReadyState};
+        Other ->
+            Other
+    end.
+
+send_ready_command(#state{socket = Socket, resource = Resource, 
+                          type = Type, identity = Identity}) ->
+    ReadyCommand = chumak_command:encode_ready(Type, 
+                                               Identity, 
+                                               Resource, #{}),
+    send_command_to_socket(Socket, ReadyCommand).
+
+map_ready_command(ReadyCommand) ->
+    case chumak_command:command_name(ReadyCommand) of
+        ready ->
+            {ready, 
+             #{security_data => #{},
+               "resource" => chumak_command:ready_resource(ReadyCommand),
+               "socket-type" => chumak_command:ready_socket_type(ReadyCommand),
+               "identity" => chumak_command:ready_identity(ReadyCommand)}};
+        error ->
+            {error, chumak_command:error_reason(ReadyCommand)};
+        Name ->
+            {error, {invalid_command_before_ready, Name}}
+    end.
+
+-spec handle_handshake_data(state(), handshake_data()) -> 
+          {ok, state()} | {error, Reason::term(), state()}.
+handle_handshake_data(State, 
+                      {error, {invalid_command_before_ready, _Name}} = Error) ->
+    {error, Error, State};
+handle_handshake_data(State, {error, Reason}) ->
+    error_logger:error_report([server_error, {msg, Reason}]),
+    {error, {shutdown, {server_error, Reason}}, State};
+handle_handshake_data(#state{multi_socket_type=true,
+                             parent_pid = ResourceRouterPid} = State, 
+                      {ready, #{"resource" := Resource} = ReadyData}) ->
     case gen_server:call(ResourceRouterPid, {route_resource, Resource}) of
         {change_socket, NewSocket, {SocketType, Opts}} ->
-            NewState = apply_opts(State#state{parent_pid=NewSocket, type=SocketType, decoder=NewDecoder}, Opts),
-            OutcommingReadyCommand = chumak_command:encode_ready(SocketType, NewState#state.identity, "", #{}),
-
+            NewState = apply_opts(State#state{parent_pid=NewSocket, 
+                                              type=SocketType}, Opts),
             unlink(ResourceRouterPid),
             link(NewSocket),
-
-            ok = send_command_to_socket(NewState#state.socket, OutcommingReadyCommand),
-            turn_async_mode(NewState, ReadyCommand);
-
+            handle_ready_response2(NewState, ReadyData);
         close ->
             send_invalid_resource_error(State#state.socket, Resource),
-            {stop, {shutdown, invalid_resource}, State}
+            {error, {shutdown, invalid_resource}, State}
     end;
+handle_handshake_data(State, {ready, ReadyData}) ->
+    handle_ready_response2(State, ReadyData).
 
-negotiate_ready_command(#state{socket=Socket, resource=Resource, conn_side=server}=State) ->
-    %% when connection is in server mode, we need to receive ready command first, after that send the command ready.
-    {ok, IncommingReadyFrame} = recv_ready_command(Socket),
-    {ok, NewDecoder, [ReadyCommand]} = chumak_protocol:decode(State#state.decoder, IncommingReadyFrame),
+handle_ready_response2(#state{socket=Socket, 
+                              type = SocketType} = State, 
+                       #{"socket-type" := PeerSocketType} = ReadyData) ->
+    case validate_peer_socket_type(State, ReadyData) of
+        {ok, #state{parent_pid = ParentPid, 
+                    peer_identity = PeerIdentity} = NewState} ->
+            gen_server:cast(ParentPid, {peer_ready, self(), PeerIdentity}),
+            {ok, NewState};
+        {error, {shutdown, invalid_peer_socket_type}, _} = InvSockTypeError->
+            send_invalid_socket_type_error(Socket, SocketType, PeerSocketType),
+            InvSockTypeError;
+        {error, _, _} = OtherError ->
+            OtherError
+    end.
 
-    case turn_async_mode(State#state{decoder=NewDecoder}, ReadyCommand) of
-        {noreply, NewState} ->
-            OutcommingReadyCommand = chumak_command:encode_ready(NewState#state.type, NewState#state.identity, Resource, #{}),
-            ok = send_command_to_socket(Socket, OutcommingReadyCommand),
+validate_peer_socket_type(#state{type=SocketType} = State,
+                          #{"socket-type" := PeerSocketTypeList,
+                            security_data := SecurityData} = Metadata) ->
+    Identity = maps:get("identity", Metadata, ""),
+    PeerSocketType = list_to_atom(string:to_lower(PeerSocketTypeList)),
+    PatternModule = chumak_pattern:module(SocketType),
+    case PatternModule:valid_peer_type(PeerSocketType) of
+        valid ->
+            {ok, State#state{step=ready, 
+                             security_data = SecurityData,
+                             peer_identity = Identity}};
+        invalid ->
+            {error, {shutdown, invalid_peer_socket_type}, State}
+    end.
 
-            {noreply, NewState};
-        X ->
-            X  %% only repass when error is found
-    end;
-
-negotiate_ready_command(#state{socket=Socket, resource=Resource, conn_side=client}=State) ->
-    OutcommingReadyCommand = chumak_command:encode_ready(State#state.type, State#state.identity, Resource, #{}),
-    ok = send_command_to_socket(State#state.socket, OutcommingReadyCommand),
-    {ok, IncommingReadyFrame} = recv_ready_command(Socket),
-    {ok, NewDecoder, [ReadyCommand]} = chumak_protocol:decode(State#state.decoder, IncommingReadyFrame),
-    turn_async_mode(State#state{decoder=NewDecoder}, ReadyCommand).
-
-turn_async_mode(#state{socket=Socket, decoder=Decoder}=State, ReadyCommand) ->
-    %% turn on connection async
-    ok = gen_tcp:controlling_process(Socket, self()),
-    ok = inet:setopts(Socket, [{active, once}]),
-
-    %% recv the version from the peer
-    PeerVersion = chumak_protocol:decoder_version(Decoder),
-    validate_ready_command(State#state{peer_version=PeerVersion}, ReadyCommand).
 
 pending_connect_state(Type, Host, Port, Resource, Opts, ParentPid) ->
     State = #state{
@@ -336,17 +479,14 @@ pending_connect_state(Type, Host, Port, Resource, Opts, ParentPid) ->
 
 accepted_state(Type, Socket, Opts, ParentPid) ->
     gen_tcp:controlling_process(Socket, self()),
-    State = #state{
-               type=Type,
-               socket=Socket,
-               decoder=chumak_protocol:new_decoder(),
-               parent_pid=ParentPid,
-               host=nil,
-               port=nil,
-               conn_side=server
-              },
-    apply_opts(State, Opts).
-
+    State = apply_opts(#state{type=Type,
+                              socket=Socket,
+                              parent_pid=ParentPid,
+                              host=nil,
+                              port=nil,
+                              conn_side=server}, Opts),
+    CurveOptions = State#state.security_data,
+    State#state{decoder = chumak_protocol:new_decoder(CurveOptions)}.
 
 apply_opts(State, []) ->
     State;
@@ -358,7 +498,23 @@ apply_opts(State, [{identity, Identity}| Opts]) ->
 apply_opts(State, [pub_compatible_layer| Opts]) ->
     apply_opts(State#state{pub_compatible_layer=true}, Opts);
 apply_opts(State, [multi_socket_type| Opts]) ->
-    apply_opts(State#state{multi_socket_type=true}, Opts).
+    apply_opts(State#state{multi_socket_type=true}, Opts);
+apply_opts(State, [{curve_server, true}| Opts]) ->
+    apply_opts(State#state{as_server=true,
+                           mechanism=curve}, Opts);
+apply_opts(State, [{curve_server, false}| Opts]) ->
+    apply_opts(State#state{as_server=false,
+                           mechanism=null}, Opts);
+apply_opts(State = #state{security_data = CurveOptions}, [{KeyType, Key}| Opts])
+    when KeyType == curve_secretkey; 
+         KeyType == curve_publickey ->
+    apply_opts(State#state{security_data = CurveOptions#{KeyType => Key}}, 
+               Opts);
+apply_opts(State = #state{security_data = CurveOptions}, 
+           [{curve_serverkey, Key}| Opts]) ->
+    apply_opts(State#state{mechanism=curve,
+                           security_data = CurveOptions#{curve_serverkey => Key}}, 
+               Opts).
 
 recv_ready_command(Socket) ->
     {ok, <<4, Size>>} = gen_tcp:recv(Socket, 2, ?GREETINGS_TIMEOUT),
@@ -380,8 +536,8 @@ process_decoder_reply(State, Reply) ->
     end.
 
 
-send_greetting_step(Socket) ->
-    Greeting = chumak_protocol:build_greeting_frame(),
+send_greetting_step(Socket, AsServer, Mechanism) ->
+    Greeting = chumak_protocol:build_greeting_frame(AsServer, Mechanism),
     case gen_tcp:send(Socket, Greeting) of
         ok ->
             ok;
@@ -420,41 +576,9 @@ receive_commands(#state{step=ready, parent_pid=ParentPid}=State, NewDecoder, [Co
             {stop, {invalid_command, Name}}
     end.
 
-validate_ready_command(#state{decoder=Decoder}=State, ReadyCommand) ->
-    case chumak_command:command_name(ReadyCommand) of
-        ready ->
-            validate_peer_socket_type(State, ReadyCommand, Decoder);
-        error ->
-            Reason = chumak_command:error_reason(ReadyCommand),
-            error_logger:error_report([
-                                       server_error,
-                                       {msg, Reason}
-                                      ]),
-            {stop, {shutdown, {server_error, Reason}}, State};
-        Name ->
-            {stop, {invalid_command_before_ready, Name}, State}
-    end.
-
-
-validate_peer_socket_type(State, ReadyCommand, NewDecoder) ->
-    #state{type=SocketType, socket=Socket, parent_pid=ParentPid}=State,
-
-    PatternModule = chumak_pattern:module(SocketType),
-    PeerSocketType = chumak_command:ready_socket_type(ReadyCommand),
-    Identity = chumak_command:ready_identity(ReadyCommand),
-    NewState = State#state{peer_identity=Identity},
-
-    case PatternModule:valid_peer_type(PeerSocketType) of
-        valid ->
-            gen_server:cast(ParentPid, {peer_ready, self(), Identity}),
-            {noreply, NewState#state{decoder=NewDecoder, step=ready}};
-        invalid ->
-            send_invalid_socket_type_error(Socket, SocketType, PeerSocketType),
-            {stop, {shutdown, invalid_peer_socket_type}, NewState}
-    end.
-
 send_invalid_socket_type_error(Socket, SocketType, PeerSocketType) ->
-    ReasonMsg = io_lib:format("Invalid socket-type ~s for ~p server", [PeerSocketType, SocketType]),
+    ReasonMsg = io_lib:format("Invalid socket-type ~s for ~p server", 
+                              [PeerSocketType, SocketType]),
     send_error_to_socket(Socket, ReasonMsg).
 
 

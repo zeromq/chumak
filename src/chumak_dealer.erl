@@ -53,13 +53,11 @@ recv(State, _From) ->
     {reply, {error, not_implemented_yet}, State}.
 
 send_multipart(#chumak_dealer{lb=LB}=State, Multipart, From) ->
-    Traffic = chumak_protocol:encode_message_multipart(Multipart),
-
     case chumak_lb:get(LB) of
         none ->
             {reply, {error, no_connected_peers}, State};
         {NewLB, PeerPid} ->
-            chumak_peer:send(PeerPid, Traffic, From),
+            chumak_peer:send(PeerPid, Multipart, From),
             {noreply, State#chumak_dealer{lb=NewLB}}
     end.
 

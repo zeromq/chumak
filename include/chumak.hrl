@@ -13,6 +13,13 @@
                      sub | xsub |
                      push | pull |
                      pair.
+-type socket_option()  :: curve_server |    %% true | false
+                          curve_publickey | %% binary()
+                          curve_secretkey | %% binary()
+                          curve_serverkey.  %% binary()
+-type security_mechanism() :: null |
+                              curve.
+
 -define(SOCKET_OPTS(Opts), lists:append([binary, {active, false}, {reuseaddr, true}], Opts)).
 -define(GREETINGS_TIMEOUT, 1000).
 -define(RECONNECT_TIMEOUT, 2000).

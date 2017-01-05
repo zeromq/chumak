@@ -12,6 +12,7 @@
 
 -export([start/2, stop/1]).
 -export([socket/1, socket/2, connect/4, connect/5, bind/4, send/2, recv/1, send_multipart/2, recv_multipart/1,
+         set_socket_option/3,
          cancel/2, subscribe/2,
          resource/0, attach_resource/3,
          version/0]).
@@ -19,6 +20,8 @@
 -define(SUPERVISOR, chumak_sup).
 
 -type version()::{Major::integer(), Minor::integer(), Patch::integer()}.
+
+-export_type([security_mechanism/0]).
 
 %%
 %% OTP/Application behaviour
@@ -45,6 +48,15 @@ socket(Type)
   when is_atom(Type) ->
     ?SUPERVISOR:start_socket(Type).
 
+%% @doc set socket option.
+%% In case of a problem an error is returned and the socket remains unchanged.
+-spec set_socket_option(SocketPid::pid(), 
+                        Option::socket_option(), Value::term()) -> 
+    ok | {error, Reason::atom()}.
+set_socket_option(SocketPid, Option, Value)
+  when is_pid(SocketPid),
+       is_atom(Option) ->
+    gen_server:call(SocketPid, {set_option, Option, Value}).
 
 %% @doc socket to a peer
 -spec connect(SocketPid::pid(), Transport::transport(), Host::string(), Port::integer()) ->

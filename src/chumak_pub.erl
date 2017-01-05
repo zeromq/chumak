@@ -75,11 +75,10 @@ recv(State, _From) ->
 
 send_multipart(#chumak_pub{subscriptions=Subscriptions}=State, Multipart, _From) ->
     [FirstPart | _] = Multipart,
-    Traffic = chumak_protocol:encode_message_multipart(Multipart),
     PeersPids = chumak_subscriptions:match(Subscriptions, FirstPart),
 
     lists:foreach(fun (PeerPid) ->
-                          chumak_peer:send(PeerPid, Traffic)
+                          chumak_peer:send(PeerPid, Multipart)
                   end, PeersPids),
 
     {reply, ok, State}.
