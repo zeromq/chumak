@@ -116,7 +116,7 @@ decode(#decoder{state=ready}=Decoder, Frame) ->
             require_size(Decoder, 2, Frame, ready);
 
         %% if size is remaing for large frame
-        <<_:5, _:1, 1:1, _:1>> ->
+        <<_:5, _:1, 1:1, _:1, _TooShortToBeSize/binary>> ->
             require_size(Decoder, 9, Frame, ready);
 
         X ->
