@@ -49,6 +49,7 @@
               Transport::transport(),
               Host::list(),
               Port::integer(),
+              Resource::list(),
               Opts::peer_opts()) ->
                      {ok, Pid::pid()} | {error, Reason::term()}.
 connect(Type, tcp, Host, Port, Resource, Opts)
