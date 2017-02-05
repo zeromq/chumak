@@ -47,7 +47,7 @@ socket(Type)
 
 
 %% @doc socket to a peer
--spec connect(SocketPid::pid(), Transport::transport(), Host::string(), Port::integer()) ->
+-spec connect(SocketPid::pid(), Transport::transport(), Host::string(), Port::integer(), Resource::string()) ->
                      {ok, PeerPid::pid()} | {error, Reason::atom()}.
 connect(SocketPid, Transport, Host, Port, Resource)
   when is_pid(SocketPid),
