@@ -1,0 +1,108 @@
+%% This script tries to discover which library can be used 
+%% to support the curve encryption (if any).
+%%
+%% If the CHUMAK_CURVE_LIB environment variable is set,
+%% that determines what is used.
+%%
+%% If it is not set: 
+%% - On Linux systems `nacl` will be added as dependency
+%% - On Windows, `enacerl` will be added if gcc and make are available 
+%%   on the system. If that is not the case, there will be no support 
+%%   for curve encryption (and hence there will be no support for the 
+%%   CURVE security model).
+%%
+%% The selected option ("nacl", "enacerl" or "none") will be passed as a 
+%% macro to the compiler. Based on this macro it is determined which 
+%% library is used by the code.
+
+%% Some of the ideas used here were found in 
+%% https://github.com/klacke/yaws/blob/master/rebar.config.script
+%% and 
+%% https://github.com/dgud/esdl/blob/master/rebar.config.script
+
+io:format("rebar.config.script is updating rebar config "
+          "to set curve librarary dependency.~n"),
+io:format("Detected os: ~p~n", [os:type()]),
+
+UpdateCfg = fun(Config, _Key, undefined) ->
+                    Config;
+                (Config, Key, NewVal) ->
+                    case lists:keyfind(Key, 1, Config) of
+                        {Key, Vals} ->
+                            NVals = [NewVal | Vals],
+                            lists:keyreplace(Key, 1, Config, {Key, NVals});
+                        false ->
+                            Config ++ [{Key, [NewVal]}]
+                    end
+            end,
+
+NaCerlDep = {nacerl, ".*", {git, "https://github.com/willemdj/NaCerl.git", {branch, "master"}}},
+EnaClDep = {nacl, ".*", {git, "https://github.com/jlouis/enacl", {branch, "master"}}},
+
+IsAvailable =
+    fun(Executable) ->
+        case os:find_executable(Executable) of
+            false ->
+                io:format("Building Chumak with curve support on windows"
+                          " requires ~p~n", [Executable]),
+                false;
+            _ ->
+                io:format("found executable ~p~n", [Executable]),
+                true
+        end
+    end,
+
+AllAvailable =
+    fun(Executables) ->
+        lists:all(fun(Bool) -> Bool end, [IsAvailable(E) || E <- Executables])
+    end,
+
+DetermineCurveDep = 
+    fun() ->
+        case os:type() of 
+            {win32, _} ->
+                case AllAvailable(["gcc", "make"]) of
+                    true ->
+                        io:format("all required tools are available~n"),
+                        NaCerlDep;
+                    false ->
+                        io:format("not all required tools are available to build "
+                                  "curve security mechanism.~n"),
+                        undefined
+                end;
+            _ ->
+                EnaClDep
+        end
+    end,
+
+%% If the CHUMAK_CURVE_LIB environment variable is set, that determines 
+%% what is used.
+CurveLibEnv = os:getenv("CHUMAK_CURVE_LIB"),
+
+CurveDep = case CurveLibEnv of
+               false ->
+                   io:format("environment variable CHUMAK_CURVE_LIB not set~n"),
+                   DetermineCurveDep();
+               Value ->
+                   io:format("using environment variable CHUMAK_CURVE_LIB~n"),
+                   case string:to_lower(Value) of
+                       "nacerl" ->
+                           NaCerlDep;
+                       "enacl" ->
+                           EnaClDep;
+                       "none" ->
+                           undefined
+                   end
+           end,
+
+CurveCompilerOption = case CurveDep of
+                          NaCerlDep -> 
+                              {d, 'CHUMAK_CURVE_LIB_NACERL', true};
+                          EnaClDep -> 
+                              {d, 'CHUMAK_CURVE_LIB_ENACL', true};
+                          _ ->
+                              {d, 'CHUMAK_CURVE_LIB_NONE', true}
+                      end,
+
+Config2 = UpdateCfg(CONFIG, erl_opts, CurveCompilerOption),
+UpdateCfg(Config2, deps, CurveDep).

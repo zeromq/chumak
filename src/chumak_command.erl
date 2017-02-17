@@ -9,7 +9,7 @@
 -export_type([command/0]).
 -export([decode/2, command_name/1, 
          encode_ready/4, ready_socket_type/1, ready_identity/1, ready_resource/1, 
-         ready_metadata/1, initiate_metadata/1,
+         ready_metadata/1, initiate_metadata/1, initiate_client_key/1,
          encode_error/1, error_reason/1,
          encode_subscribe/1, subscribe_subscription/1,
          encode_cancel/1, cancel_subscription/1,
@@ -29,7 +29,8 @@
 -record(cancel, {subscription :: binary()}).
 -record(hello, {}).
 -record(welcome, {}).
--record(initiate, {metadata = #{} :: map}).
+-record(initiate, {metadata = #{} :: map(),
+                   client_public_key :: binary()}).
 -record(message, {}).
 
 -type ready()    :: ready().      %% ready command
@@ -104,6 +105,12 @@ ready_metadata(#ready{metadata=Metadata}) ->
 -spec initiate_metadata(Command::initiate()) -> Metadata::map().
 initiate_metadata(#initiate{metadata=Metadata}) ->
     Metadata.
+
+%% @doc return the public key of the client. This is an element of the
+%% INITIATE command. It can be used to identify the client.
+-spec initiate_client_key(Command::initiate()) -> Key::binary().
+initiate_client_key(#initiate{client_public_key=Value}) ->
+    Value.
 
 
 %% @doc encode a ready command
@@ -293,10 +300,11 @@ decode_hello_message(<<1, 0, 0:72/integer-unit:8,
     <<Nonce:8/integer-unit:8>> = NonceBinary,
     HelloNonceBinary = <<"CurveZMQHELLO---", NonceBinary/binary>>,
     %% TODO: Do something specific when decryption fails?
-    {ok, <<0:64/integer-unit:8>>} = nacl:box_open(HelloBox, 
-                                                  HelloNonceBinary,
-                                                  ClientPublicTransientKey,
-                                                  ServerSecretPermanentKey),
+    {ok, <<0:64/integer-unit:8>>} = 
+        chumak_curve_if:box_open(HelloBox, 
+                                 HelloNonceBinary,
+                                 ClientPublicTransientKey,
+                                 ServerSecretPermanentKey),
     NewCurveData = CurveData#{client_nonce => Nonce,
                               client_public_transient_key => ClientPublicTransientKey},
     {ok, #hello{}, NewCurveData}.
@@ -316,11 +324,11 @@ decode_welcome_message(<<NonceBinary:16/binary,
                        } = CurveData) ->
     WelcomeNonceBinary = <<"WELCOME-", NonceBinary/binary>>,
     %% TODO: Do something specific when decryption fails?
-    {ok, <<ServerPublicTransientKey:32/binary,
-           Cookie:96/binary>>} = nacl:box_open(WelcomeBox,
-                                               WelcomeNonceBinary,
-                                               ServerPublicPermanentKey,
-                                               ClientSecretTransientKey),
+    {ok, <<ServerPublicTransientKey:32/binary, Cookie:96/binary>>} = 
+        chumak_curve_if:box_open(WelcomeBox,
+                                 WelcomeNonceBinary,
+                                 ServerPublicPermanentKey,
+                                 ClientSecretTransientKey),
     NewCurveData = CurveData#{server_public_transient_key =>
                                   ServerPublicTransientKey,
                               cookie => Cookie},
@@ -356,20 +364,30 @@ decode_initiate_message(<<CookieNonceBinary:16/binary,
     %% The cookie contains the server's secret transient key and
     %% the client public transient key.
     CookieNonce = <<"COOKIE--", CookieNonceBinary/binary>>,
-    {ok, <<ClientPublicTransientKey:32/binary,
-           ServerSecretTransientKey:32/binary>>} = nacl:box_open(CookieBox, 
-                                                                 CookieNonce,
-                                                                 CookiePublicKey,
-                                                                 CookieSecretKey),
+    {ok, <<ClientPublicTransientKey:32/binary, 
+           ServerSecretTransientKey:32/binary>>} = 
+        chumak_curve_if:box_open(CookieBox, 
+                                 CookieNonce,
+                                 CookiePublicKey,
+                                 CookieSecretKey),
     InitiateNonceBinary = <<"CurveZMQINITIATE", NonceBinary/binary>>,
-    {ok, <<ClientPublicPermanentKey:32/binary,
-           _VouchNonce:16/binary,
-           _VouchBox:80/binary,
-           MetaData/binary>>} = nacl:box_open(InitiateBox,
-                                              InitiateNonceBinary,
-                                              ClientPublicTransientKey,
-                                              ServerSecretTransientKey),
-    %% The vouch is used for TODO
+    {ok, <<ClientPublicPermanentKey:32/binary, VouchNonceBinary:16/binary,
+           VouchBox:80/binary, MetaData/binary>>} = 
+        chumak_curve_if:box_open(InitiateBox, InitiateNonceBinary,
+                                 ClientPublicTransientKey,
+                                 ServerSecretTransientKey),
+    %% The vouch must be decoded using the client permanent key,
+    %% so that we know that the client also has the secret key, and 
+    %% therefore is who he claims to be.
+    %% The vouch box (80 octets) encrypts the client's transient key C' 
+    %% (32 octets) and the server permanent key S (32 octets) from the 
+    %% client permanent key C to the server transient key S'.
+    VouchNonce = <<"VOUCH---", VouchNonceBinary/binary>>,
+    {ok, <<ClientPublicTransientKey:32/binary, 
+           _ServerPublicPermanentKey:32/binary>>} =
+        chumak_curve_if:box_open(VouchBox, VouchNonce,
+                                 ClientPublicPermanentKey,
+                                 ServerSecretTransientKey),
     NewCurveData = CurveData#{client_nonce => Nonce, 
                               server_secret_transient_key => 
                                   ServerSecretTransientKey,
@@ -379,7 +397,8 @@ decode_initiate_message(<<CookieNonceBinary:16/binary,
                                   ClientPublicTransientKey,
                               cookie_secret_key => <<>>,
                               cookie_public_key => <<>>},
-    {ok, #initiate{metadata = decode_ready_properties(MetaData)}, 
+    {ok, #initiate{metadata = decode_ready_properties(MetaData),
+                   client_public_key = ClientPublicPermanentKey}, 
      NewCurveData}.
 
 %% ;   READY command, 30+ octets
@@ -394,10 +413,9 @@ decode_curve_ready_message(
          } = CurveData) ->
     <<Nonce:8/integer-unit:8>> = NonceBinary,
     ReadyNonceBinary = <<"CurveZMQREADY---", NonceBinary/binary>>,
-    {ok, MetaData} = nacl:box_open(ReadyBox,
-                                   ReadyNonceBinary,
-                                   ServerPublicTransientKey,
-                                   ClientSecretTransientKey),
+    {ok, MetaData} = 
+        chumak_curve_if:box_open(ReadyBox, ReadyNonceBinary,
+                                 ServerPublicTransientKey, ClientSecretTransientKey),
     NewCurveData = CurveData#{server_nonce => Nonce},
     {ok, #ready{metadata = decode_ready_properties(MetaData)}, NewCurveData}.
 
@@ -420,10 +438,9 @@ decode_curve_message(
     <<Nonce:8/integer-unit:8>> = NonceBinary,
     true = (Nonce > OldNonceValue),
     MessageNonce = <<"CurveZMQMESSAGEC", NonceBinary/binary>>,
-    {ok, <<_, MessageData/binary>>} = nacl:box_open(MessageBox,
-                                                    MessageNonce,
-                                                    PublicKey,
-                                                    SecretKey),
+    {ok, <<_, MessageData/binary>>} = 
+        chumak_curve_if:box_open(MessageBox, MessageNonce, 
+                                 PublicKey, SecretKey),
     NewCurveData = CurveData#{client_nonce => Nonce},
     {ok, MessageData, NewCurveData};
 decode_curve_message(
@@ -437,9 +454,8 @@ decode_curve_message(
     <<Nonce:8/integer-unit:8>> = NonceBinary,
     true = (Nonce > OldNonceValue),
     MessageNonce = <<"CurveZMQMESSAGES", NonceBinary/binary>>,
-    {ok, <<_, MessageData/binary>>} = nacl:box_open(MessageBox,
-                                                    MessageNonce,
-                                                    PublicKey,
-                                                    SecretKey),
+    {ok, <<_, MessageData/binary>>} = 
+        chumak_curve_if:box_open(MessageBox, MessageNonce,
+                                 PublicKey, SecretKey),
     NewCurveData = CurveData#{server_nonce => Nonce},
     {ok, MessageData, NewCurveData}.

@@ -3,7 +3,6 @@
 %% file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 -module(chumak_stone_house_test).
--include_lib("nacl/include/nacl.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -define(MESSAGE, <<"message from client">>).
@@ -17,7 +16,7 @@ rep_single_test_() ->
     ].
 
 start_valid() ->
-    #nacl_box_keypair{pk = PK, sk = SK} = nacl:box_keypair(),
+    #{public := PK, secret := SK} = chumak_curve_if:box_keypair(),
     application:ensure_started(chumak),
     {ok, Socket} = chumak:socket(pull),
     ok = chumak:set_socket_option(Socket, curve_server, true),
@@ -37,7 +36,7 @@ push_and_pull({SocketPid, ServerKey})->
     ].
 
 push(ServerKey) ->
-    #nacl_box_keypair{pk = PK, sk = SK} = nacl:box_keypair(),
+    #{public := PK, secret := SK} = chumak_curve_if:box_keypair(),
     spawn_link(fun () ->
                        timer:sleep(100), %% wait socket to be acceptable
                        {ok, ClientSocket} = chumak:socket(push),

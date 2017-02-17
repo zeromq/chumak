@@ -1,14 +1,20 @@
--module(chumak_z85).
+%% This Source Code Form is subject to the terms of the Mozilla Public
+%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%% file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-%%% Implements Z85 encoding and decoding, as specified in 
-%%% https://rfc.zeromq.org/spec:32/Z85/
+%% @doc Implements Z85 encoding and decoding, as specified in 
+%% https://rfc.zeromq.org/spec:32/Z85/
+
+-module(chumak_z85).
 
 -define(SPECIAL_CHARS, ".-:+=^!/*?&<>()[]{}@%$#").
 
 -export([encode/1, decode/1]).
 
 -spec encode(binary()) -> string().
-%% @doc As per the spec, the length of the binary SHALL be divisible by 4 
+%% @doc Encode a binary to a Z85 string.
+%%
+%% As per the spec, the length of the binary SHALL be divisible by 4 
 %% with no remainder.
 encode(Binary) when is_binary(Binary) ->
     case size(Binary) rem 4 of
@@ -18,7 +24,9 @@ encode(Binary) when is_binary(Binary) ->
     end.
 
 -spec decode(string()) -> binary().
-%% @doc As per the spec, the length of the string SHALL be divisible by 5 
+%% @doc Decode a Z85 string to a binary.
+%%
+%% As per the spec, the length of the string SHALL be divisible by 5 
 %% with no remainder.
 %%
 %% Note that not all strings are valid encodings. The result for a string that 

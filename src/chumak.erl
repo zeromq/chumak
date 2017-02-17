@@ -50,6 +50,52 @@ socket(Type)
 
 %% @doc set socket option.
 %% In case of a problem an error is returned and the socket remains unchanged.
+%%
+%% Valid options are:
+%% <dl>
+%%   <dt>curve server</dt>
+%%   <dd>- Set CURVE server role</dd>
+%%   <dd>- type: boolean()</dd>
+%%   <dd>Defines whether the socket will act as server for CURVE security. A
+%%   value of true means the socket will act as CURVE server. A value of false
+%%   means the socket will not act as CURVE server. When you set this you must 
+%%   also set the server's secret key using the curve_secretkey option. A server 
+%%   socket does not need to know its own public key.</dd>
+%%
+%%   <dt>curve_serverkey</dt>
+%%   <dd>- Set CURVE server key</dd>
+%%   <dd>- type: binary() or string()</dd>
+%%   <dd>Sets the socket's long term server key. You must set this on CURVE
+%%   client sockets. You can provide the key as 32 binary bytes, or as a
+%%   40-character string encoded in the Z85 encoding format. This key must have
+%%   been generated together with the server's secret key.</dd>
+%%
+%%   <dt>curve_secretkey</dt>
+%%   <dd>- Set CURVE secret key</dd>
+%%   <dd>- type: binary() or string()</dd>
+%%   <dd>Sets the socket's long term secret key. You must set this on both
+%%   CURVE client and server sockets. You can provide the key as 32 binary
+%%   bytes, or as a 40-character string encoded in the Z85 encoding format.</dd>
+%%
+%%   <dt>curve_publickey</dt>
+%%   <dd>- Set CURVE public key</dd>
+%%   <dd>- type: binary() or string()</dd>
+%%   <dd>Sets the socket's long term public key. You must set this on CURVE
+%%   client sockets. You can provide the key as 32 binary bytes, or as a
+%%   40-character string encoded in the Z85 encoding format. The public key
+%%   must always be used with the matching secret key.</dd>
+%%
+%%   <dt>curve_clientkeys</dt>
+%%   <dd>- Provide public keys of authorised clients</dd>
+%%   <dd>- type: list of string() or integer() , or 'any'</dd>
+%%   <dd>Determines which clients are authorised to connect to the server. You
+%%   may set this on CURVE server sockets. If it is not set explictly, if
+%%   defaults to 'any', which means that all clients have access (provided that
+%%   they know the CURVE secret key). If a list of keys is provided, only
+%%   clients with those public keys can connect to the server. You can provide
+%%   the keys as 32-byte binaries or as 40-character strings.</dd>
+%% </dl>
+                          
 -spec set_socket_option(SocketPid::pid(), 
                         Option::socket_option(), Value::term()) -> 
     ok | {error, Reason::atom()}.
@@ -59,7 +105,8 @@ set_socket_option(SocketPid, Option, Value)
     gen_server:call(SocketPid, {set_option, Option, Value}).
 
 %% @doc socket to a peer
--spec connect(SocketPid::pid(), Transport::transport(), Host::string(), Port::integer()) ->
+-spec connect(SocketPid::pid(), Transport::transport(), 
+              Host::string(), Port::integer(), Resource::term()) ->
                      {ok, PeerPid::pid()} | {error, Reason::atom()}.
 connect(SocketPid, Transport, Host, Port, Resource)
   when is_pid(SocketPid),

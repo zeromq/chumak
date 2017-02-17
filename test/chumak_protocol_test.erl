@@ -269,21 +269,21 @@ encode_large_command_test()->
     ?assertEqual(Frame, <<6, 0, 0, 0, 0, 0, 0, 1, 45, 255, Command/binary>>).
 
 encode_small_last_message_test()->
-    Frame = chumak_protocol:encode_last_message(<<"Hello">>),
+    {Frame, _} = chumak_protocol:encode_last_message(<<"Hello">>, null, #{}),
     ?assertEqual(Frame, <<0, 5, "Hello">>).
 
 encode_large_last_message_test()->
     Message = binary:copy(<<"big">>, 100),
-    Frame = chumak_protocol:encode_last_message(Message),
+    {Frame, _} = chumak_protocol:encode_last_message(Message, null, #{}),
     ?assertEqual(Frame, <<2, 0, 0, 0, 0, 0, 0, 1, 44, Message/binary>>).
 
 encode_small_more_message_test()->
-    Frame = chumak_protocol:encode_more_message(<<"Hello">>),
+    {Frame, _} = chumak_protocol:encode_more_message(<<"Hello">>, null, #{}),
     ?assertEqual(Frame, <<1, 5, "Hello">>).
 
 encode_large_more_message_test()->
     Message = binary:copy(<<"big">>, 100),
-    Frame = chumak_protocol:encode_more_message(Message),
+    {Frame, _} = chumak_protocol:encode_more_message(Message, null, #{}),
     ?assertEqual(Frame, <<3, 0, 0, 0, 0, 0, 0, 1, 44, Message/binary>>).
 
 encode_message_multi_part_test()->

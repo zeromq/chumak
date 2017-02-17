@@ -133,7 +133,16 @@ set_option(Name, Value, #state{socket_options = Options} = State)
        Name =:= curve_secretkey, is_binary(Value);
        Name =:= curve_serverkey, is_binary(Value) ->
     {reply, ok, State#state{socket_options = Options#{Name => Value}}};
-set_option(_, _, State) ->
+set_option(Name, Value, #state{socket_options = Options} = State) 
+  when Name =:= curve_clientkeys ->
+    case validate_keys(Value) of
+        {ok, BinaryKeys} ->
+            {reply, ok, 
+             State#state{socket_options = Options#{Name => BinaryKeys}}};
+        {error, _Error} ->
+            {reply, {error, einval}, State}
+    end;
+set_option(_Name, _Value, State) ->
     {reply, {error, einval}, State}.
 
 connect(Protocol, Host, Port, Resource, #state{socket=S, socket_state=T}=State) ->
@@ -224,3 +233,27 @@ peer_flags(#state{socket=Socket,
     {SocketType, lists:flatten([{identity, Identity},
                                 maps:to_list(SocketOptions),
                                 PeerOpts])}.
+
+%% Make sure that kesy are either binaries or strings.
+%% Strings should be Z85 encoded, convert those to binaries.
+validate_keys(Keys) when is_list(Keys) ->
+    validate_keys(Keys, []);
+validate_keys(any) ->
+    {ok, any};
+validate_keys(_Other) ->
+    {error, einval}.
+
+validate_keys([], Acc) ->
+    {ok, lists:reverse(Acc)};
+validate_keys([Key | T], Acc) when is_list(Key) ->
+    try chumak_z85:decode(Key) of
+        Binary ->
+            validate_keys(T, [Binary | Acc])
+    catch
+        _:_ ->
+            {error, "Failed to decode Z85 key"}
+    end;
+validate_keys([Key | T], Acc) when is_binary(Key) ->
+    validate_keys(T, [Key | Acc]);
+validate_keys(_, _) ->
+    {error, "Invalid type for key"}.

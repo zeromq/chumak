@@ -9,7 +9,6 @@
 
 -module(chumak_curve).
 -include("chumak.hrl").
--include_lib("nacerl/include/nacl.hrl").
 
 %% To become a CURVE server, the application sets the ZMQ_CURVE_SERVER 
 %% option on the socket, and then sets the ZMQ_CURVE_SECRETKEY option 
@@ -48,6 +47,8 @@
 
 %% @doc Execute the curveZMQ security handshake, in accordance with
 %% https://rfc.zeromq.org/spec:26/CURVEZMQ/
+%%
+%% See also https://gist.github.com/sysbot/4b23e9765f1fd13ec5aa
 -spec security_handshake(Socket::gen_tcp:socket(),
                          Decoder::chumak_protocol:decoder(),
                          AsServer::boolean(),
@@ -89,7 +90,8 @@ security_handshake(Socket, Decoder, true, Metadata) ->
     %% Server role. Wait for HELLO from client.
     try
         CurveData = chumak_protocol:decoder_security_data(Decoder),
-        {ok, CurveData2} = validate_server_curve_data(CurveData),
+        {ok, #{curve_clientkeys := AllowedClients} = CurveData2} =
+            validate_server_curve_data(CurveData),
         Decoder2 = chumak_protocol:set_decoder_security_data(Decoder, 
                                                              CurveData2),
 
@@ -100,7 +102,6 @@ security_handshake(Socket, Decoder, true, Metadata) ->
         {ok, Decoder3, [_Hello]} = chumak_protocol:decode(Decoder2, HelloFrame),
         CurveData3 = chumak_protocol:decoder_security_data(Decoder3),
 
-
         %% Send WELCOME
         {ok, CurveData4} = send_welcome_step(Socket, CurveData3),
         Decoder4 = chumak_protocol:set_decoder_security_data(Decoder3, 
@@ -109,6 +110,16 @@ security_handshake(Socket, Decoder, true, Metadata) ->
         {ok, InitiateFrame} = receive_command(Socket),
         {ok, Decoder5, [Initiate]} = chumak_protocol:decode(Decoder4, 
                                                             InitiateFrame),
+
+        %% If required, authenticate the client.
+        case AllowedClients of
+            any ->
+                ok;
+            _ ->
+                ClientKey = chumak_command:initiate_client_key(Initiate),
+                true = lists:member(ClientKey, AllowedClients)
+        end,
+
         MetaData = chumak_command:initiate_metadata(Initiate),
 
         CurveData5 = chumak_protocol:decoder_security_data(Decoder5),
@@ -136,7 +147,9 @@ receive_command(Socket) ->
         {ok, <<?LARGE_COMMAND>>} ->
             {ok, <<Size:64>>} = gen_tcp:recv(Socket, 8, ?GREETINGS_TIMEOUT),
             {ok, Frame} = gen_tcp:recv(Socket, Size, ?GREETINGS_TIMEOUT),
-            {ok, <<?LARGE_COMMAND, Size:64, Frame/binary>>}
+            {ok, <<?LARGE_COMMAND, Size:64, Frame/binary>>};
+        {error, _} = Error ->
+            Error
     end.
 
 %% The HELLO Command
@@ -237,7 +250,7 @@ send_ready_step(Socket, CurveData, Metadata) ->
 %% curve_serverkey must be set
 validate_client_curve_data(CurveData) when is_map(CurveData) ->
     true = is_binary(maps:get(curve_serverkey, CurveData, undefined)),
-    #nacl_box_keypair{pk = PK, sk = SK} = nacl:box_keypair(),
+    #{public := PK, secret := SK} = chumak_curve_if:box_keypair(),
     {ok, CurveData#{mechanism => curve, 
                     role => client,
                     client_secret_transient_key => SK,
@@ -247,9 +260,11 @@ validate_client_curve_data(CurveData) when is_map(CurveData) ->
 %% curve_secretkey must be set,
 validate_server_curve_data(CurveData) when is_map(CurveData) ->
     true = is_binary(maps:get(curve_secretkey, CurveData, undefined)),
-    #nacl_box_keypair{pk = PK, sk = SK} = nacl:box_keypair(),
-    #nacl_box_keypair{pk = Cookie_PK, sk = Cookie_SK} = nacl:box_keypair(),
+    ClientKeys = maps:get(curve_clientkeys, CurveData, any),
+    #{public := PK, secret := SK} = chumak_curve_if:box_keypair(),
+    #{public := Cookie_PK, secret := Cookie_SK} = chumak_curve_if:box_keypair(),
     {ok, CurveData#{mechanism => curve, 
+                    curve_clientkeys => ClientKeys,
                     role => server,
                     server_secret_transient_key => SK,
                     server_public_transient_key => PK,

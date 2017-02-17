@@ -22,10 +22,11 @@ Features
 5. Exclusive Pair Pattern
 6. Version Negotiation
 7. NULL Security Mechanism
-8. Error Handling
-9. Framing
-10. Socket-Type Property & Identity Property
-11. Backwards Interoperability with ZMTP 3.0
+8. CURVE Security Mechanism
+9. Error Handling
+10. Framing
+11. Socket-Type Property & Identity Property
+12. Backwards Interoperability with ZMTP 3.0
 
 
 Install
@@ -54,6 +55,21 @@ Build
 ```
 $ rebar3 compile
 ```
+
+By default, this will try to build a version of the application that
+includes support for the CURVE security model. For this it needs support
+from a NIF that handles the cryptographic functions. 
+
+-    On Windows it will attempt to build [nacerl](https://github.com/willemdj/NaCerl). 
+     This requires make and gcc. Typically it should be built from Mingw
+     or something similar. If these tools are not available, a version
+     without support for the CURVE model will be built.
+-    On other platforms it will attempt to build
+     [enacl](https://github.com/jlouis/enacl).
+
+If support for the CURVE model is not required or if rebar3 fails to build
+the NIF, rebar3 can be forced to skip these dependencies by setting the
+environment variable `CHUMAK_CURVE_LIB` to `none`.
 
 Test
 ----
@@ -99,10 +115,6 @@ FAQ
    No. Everyone owns the piece of code they contribute.
    Please see [Contributing](CONTRIBUTING.md) for details.
 
-
-Future work
-------------
-1. CurveZMQ - add security, with which chumak is compatible.
 
 License
 --------

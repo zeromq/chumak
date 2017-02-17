@@ -10,7 +10,6 @@
 
 -module(chumak_protocol).
 -include("chumak.hrl").
--include_lib("nacl/include/nacl.hrl").
 
 -export_type([decoder/0]).
 -export([build_greeting_frame/2,
@@ -24,7 +23,8 @@
          decoder_security_data/1, set_decoder_security_data/2,
          decode/2, continue_decode/1,
          encode_old_subscribe/1, encode_old_cancel/1,
-         encode_command/1, encode_message_multipart/3, encode_more_message/1, encode_last_message/1,
+         encode_command/1, encode_message_multipart/3, 
+         encode_more_message/3, encode_last_message/3,
          message_data/1, message_has_more/1
         ]).
 
@@ -166,9 +166,9 @@ build_hello_frame(#{client_public_transient_key := ClientPublicTransientKey,
     ClientShortNonceBinary = <<ClientShortNonce:8/integer-unit:8>>,
     Nonce = <<"CurveZMQHELLO---", ClientShortNonceBinary/binary>>,
     %% box(Msg, Nonce, Pk, Sk)
-    #nacl_envelope{ciphertext = SignatureBox} = 
-        nacl:box(<<0:64/integer-unit:8>>, Nonce, ServerPermanentKey,
-                 ClientSecretTransientKey),
+    SignatureBox = 
+        chumak_curve_if:box(<<0:64/integer-unit:8>>, Nonce, ServerPermanentKey,
+                            ClientSecretTransientKey),
     Command = <<CommandNameSize/binary, CommandName/binary, Version/binary, 
                 Padding/binary, ClientPublicTransientKey/binary, 
                 ClientShortNonceBinary/binary, SignatureBox/binary>>,
@@ -217,6 +217,7 @@ build_hello_frame(#{client_public_transient_key := ClientPublicTransientKey,
 %% welcome-nonce = 16OCTET     ; Long nonce, prefixed by "WELCOME-"
 %% welcome-box = 144OCTET      ; Box [S' + cookie](S->C')
 %% ;   This is the text sent encrypted in the box
+%% ?? the Server public transient key ?? (bug in the spec).
 %% cookie = cookie-nonce cookie-box
 %% cookie-nonce = 16OCTET      ; Long nonce, prefixed by "COOKIE--"
 %% cookie-box = 80OCTET        ; Box [C' + s'](K)
@@ -226,19 +227,18 @@ build_welcome_frame(#{server_public_transient_key := ServerPublicTransientKey,
                       client_public_transient_key := ClientPublicTransientKey,
                       cookie_public_key := CookiePublicKey,
                       cookie_secret_key := CookieSecretKey} = CurveData) ->
-    LongNonce = nacl:randombytes(16),
+    LongNonce = chumak_curve_if:randombytes(16),
     WelcomeBoxNonce = <<"WELCOME-", LongNonce/binary>>,
     CookieBoxNonce = <<"COOKIE--", LongNonce/binary>>,
-    #nacl_envelope{ciphertext = CookieBox} = 
-        nacl:box(<<ClientPublicTransientKey/binary,
-                   ServerSecretTransientKey/binary>>,
-                 CookieBoxNonce, CookiePublicKey, CookieSecretKey),
+    CookieBox = 
+        chumak_curve_if:box(<<ClientPublicTransientKey/binary,
+                              ServerSecretTransientKey/binary>>,
+                            CookieBoxNonce, CookiePublicKey, CookieSecretKey),
     Cookie = <<LongNonce/binary, CookieBox/binary>>,
-    #nacl_envelope{ciphertext = WelcomeBox} = 
-        nacl:box(<<ServerPublicTransientKey/binary,
-                   Cookie/binary>>, 
-                 WelcomeBoxNonce, 
-                 ClientPublicTransientKey, ServerSecretPermanentKey),
+    WelcomeBox = 
+        chumak_curve_if:box(<<ServerPublicTransientKey/binary, Cookie/binary>>, 
+                            WelcomeBoxNonce, 
+                            ClientPublicTransientKey, ServerSecretPermanentKey),
     Welcome = <<7, <<"WELCOME">>/binary, LongNonce/binary, WelcomeBox/binary>>,
     %% remove the transient keys (they will be returned by the client in the
     %% initiate message).
@@ -326,19 +326,19 @@ build_initiate_frame(MetaData,
                        curve_serverkey := ServerPublicPermanentKey,
                        cookie := Cookie} = CurveData) ->
     ClientShortNonceBinary = <<ClientShortNonce:8/integer-unit:8>>,
-    LongNonce = nacl:randombytes(16),
+    LongNonce = chumak_curve_if:randombytes(16),
     VouchBoxNonce = <<"VOUCH---", LongNonce/binary>>,
     InitiateBoxNonce = <<"CurveZMQINITIATE", ClientShortNonceBinary/binary>>,
 
     %% The vouch box (80 octets), that encrypts the client's transient key C'
     %% (32 octets) and the server permanent key S (32 octets) from the client
     %% permanent key C to the server transient key S'.
-    #nacl_envelope{ciphertext = VouchBox} = 
-        nacl:box(<<ClientPublicTransientKey/binary,
-                   ServerPublicPermanentKey/binary>>,
-                 VouchBoxNonce, 
-                 ServerPublicTransientKey,
-                 ClientSecretPermanentKey),
+    VouchBox = 
+        chumak_curve_if:box(<<ClientPublicTransientKey/binary,
+                              ServerPublicPermanentKey/binary>>,
+                            VouchBoxNonce, 
+                            ServerPublicTransientKey,
+                            ClientSecretPermanentKey),
 
     Vouch = <<LongNonce/binary, VouchBox/binary>>,
     MetaDataBinary = chumak_command:encode_ready_properties(MetaData),
@@ -346,13 +346,12 @@ build_initiate_frame(MetaData,
     %% The initiate box holds the client permanent public key C (32 octets),
     %% the vouch (96 octets), and the metadata (0 or more octets), encrypted
     %% from the client's transient key C' to the server's transient key S'.
-    #nacl_envelope{ciphertext = InitiateBox} = 
-        nacl:box(<<ClientPublicPermanentKey/binary,
-                   Vouch/binary,
-                 MetaDataBinary/binary>>,
-                 InitiateBoxNonce, 
-                 ServerPublicTransientKey,
-                 ClientSecretTransientKey),
+    InitiateBox = 
+        chumak_curve_if:box(<<ClientPublicPermanentKey/binary, Vouch/binary,
+                              MetaDataBinary/binary>>,
+                            InitiateBoxNonce, 
+                            ServerPublicTransientKey,
+                            ClientSecretTransientKey),
     Initiate = <<8, <<"INITIATE">>/binary, Cookie/binary, 
                  ClientShortNonceBinary/binary, InitiateBox/binary>>,
     {encode_command(Initiate), CurveData#{client_nonce => ClientShortNonce + 1}}.
@@ -405,10 +404,10 @@ build_ready_frame(MetaData,
     %% The ready box (16 or more octets). This shall contain metadata of the
     %% same format as sent in the INITIATE command, encrypted from the server's
     %% transient key S' to the client's transient key C'.
-    #nacl_envelope{ciphertext = ReadyBox} = 
-        nacl:box(<<MetaDataBinary/binary>>,
-                   ReadyBoxNonce, 
-                   ClientPublicTransientKey, ServerSecretTransientKey),
+    ReadyBox = 
+        chumak_curve_if:box(<<MetaDataBinary/binary>>,
+                            ReadyBoxNonce, ClientPublicTransientKey, 
+                            ServerSecretTransientKey),
 
     Ready = <<5, "READY", ServerShortNonceBinary/binary,
                  ReadyBox/binary>>,
@@ -422,28 +421,34 @@ build_ready_frame(MetaData,
 %% payload = payload-flags payload-data
 %% payload-flags = OCTET       ; Explained below
 %% payload-data = *octet       ; 0 or more octets
-build_message(Message, #{role := client,
-                         client_secret_transient_key := SecretKey,
-                         server_public_transient_key := PublicKey,
-                         client_nonce := ClientNonce} = SecurityData) ->
+build_message(Message, 
+              curve,
+              #{role := client,
+                client_secret_transient_key := SecretKey,
+                server_public_transient_key := PublicKey,
+                client_nonce := ClientNonce} = SecurityData) ->
     NonceBinary = <<ClientNonce:8/integer-unit:8>>,
     Nonce = <<"CurveZMQMESSAGEC", NonceBinary/binary>>,
-    #nacl_envelope{ciphertext = MessageBox} = 
-        nacl:box(<<0, Message/binary>>,
-                   Nonce, PublicKey, SecretKey),
+    MessageBox = 
+        chumak_curve_if:box(<<0, Message/binary>>, 
+                            Nonce, PublicKey, SecretKey),
     {<<7, "MESSAGE", NonceBinary/binary, MessageBox/binary>>,
      SecurityData#{client_nonce => ClientNonce + 1}};
-build_message(Message, #{role := server,
-                         server_secret_transient_key := SecretKey,
-                         client_public_transient_key := PublicKey,
-                         server_nonce := ServerNonce} = SecurityData) ->
+build_message(Message, 
+              curve,
+              #{role := server,
+                server_secret_transient_key := SecretKey,
+                client_public_transient_key := PublicKey,
+                server_nonce := ServerNonce} = SecurityData) ->
     NonceBinary = <<ServerNonce:8/integer-unit:8>>,
     Nonce = <<"CurveZMQMESSAGES", NonceBinary/binary>>,
-    #nacl_envelope{ciphertext = MessageBox} = 
-        nacl:box(<<0, Message/binary>>,
-                   Nonce, PublicKey, SecretKey),
+    MessageBox = 
+        chumak_curve_if:box(<<0, Message/binary>>, 
+                            Nonce, PublicKey, SecretKey),
     {<<7, "MESSAGE", NonceBinary/binary, MessageBox/binary>>,
-     SecurityData#{server_nonce => ServerNonce + 1}}.
+     SecurityData#{server_nonce => ServerNonce + 1}};
+build_message(Message, _, SecurityData) ->
+    {Message, SecurityData}.
 
 %% @doc new_decoder creates a new decoder waiting for greeting message
 -spec new_decoder(SecurityData::decoder_security_data()) -> NewDecoder::decoder().
@@ -637,39 +642,56 @@ encode_command(Command) when is_binary(Command) ->
 %% @doc encode a old format of subscriptions found in version 3.0 of zeromq
 -spec encode_old_subscribe(Topic::binary()) -> Traffic::binary().
 encode_old_subscribe(Topic) ->
-    encode_last_message(<<1, Topic/binary>>).
+    {Encoded, _} = encode_last_message(<<1, Topic/binary>>, null, #{}),
+    Encoded.
 
 %% @doc encode a old format of unsubscriptions found in version 3.0 of zeromq
 -spec encode_old_cancel(Topic::binary()) -> Traffic::binary().
 encode_old_cancel(Topic) ->
-    encode_last_message(<<0, Topic/binary>>).
+    {Encoded, _} = encode_last_message(<<0, Topic/binary>>, null, #{}),
+    Encoded.
 
 %% @doc Generate a traffic based com a message with multi parts
 -spec encode_message_multipart([Message::binary()],
                                Mechanism::security_mechanism(),
                                SecurityData::map()) -> {Traffic::binary(),
                                                         NewSecurityData::map()}.
-encode_message_multipart(Multipart, null, SecurityData) ->
+%% TODO: check this - is this how multipart messages work?
+encode_message_multipart(Multipart, Mechanism, SecurityData) ->
     More = lists:sublist(Multipart, length(Multipart) -1),
     Last = lists:last(Multipart),
-    MoreTraffic = binary:list_to_bin(lists:map(fun encode_more_message/1, More)),
-    LastTraffic = encode_last_message(Last),
-    {<<MoreTraffic/binary, LastTraffic/binary>>, SecurityData};
-%% TODO: it is not clear how multipart is supposed to work.
-encode_message_multipart([Message], curve, SecurityData) ->
-    {Frame, NewSecurityData} = build_message(Message, SecurityData),
-    {encode_frame(?SMALL_LAST_MESSAGE, ?LARGE_LAST_MESSAGE, Frame),
+    {MoreTrafficList, NewSecurityData} = 
+        lists:mapfoldl(fun(Part, SDataAcc) ->
+                           encode_more_message(Part, Mechanism, SDataAcc)
+                       end, SecurityData, More),
+    MoreTraffic = binary:list_to_bin(MoreTrafficList),
+    {LastTraffic, FinalSecData} = encode_last_message(Last, Mechanism, 
+                                                      NewSecurityData),
+    {<<MoreTraffic/binary, LastTraffic/binary>>, FinalSecData}.
+
+%% @doc Generate a traffic based on a message
+-spec encode_more_message(Message::binary(),
+                          Mechanism::security_mechanism(),
+                          SecurityData::map()) -> Traffic::binary().
+encode_more_message(Message, Mechanism, SecurityData) 
+  when is_binary(Message) ->
+    {Frame, NewSecurityData} = build_message(Message, 
+                                             Mechanism,
+                                             SecurityData),
+    {encode_frame(?SMALL_MORE_MESSAGE, ?LARGE_MORE_MESSAGE, Frame),
      NewSecurityData}.
 
 %% @doc Generate a traffic based on a message
--spec encode_more_message(Message::binary()) -> Traffic::binary().
-encode_more_message(Message) when is_binary(Message) ->
-    encode_frame(?SMALL_MORE_MESSAGE, ?LARGE_MORE_MESSAGE, Message).
-
-%% @doc Generate a traffic based on a message
--spec encode_last_message(Message::binary()) -> Traffic::binary().
-encode_last_message(Message) when is_binary(Message) ->
-    encode_frame(?SMALL_LAST_MESSAGE, ?LARGE_LAST_MESSAGE, Message).
+-spec encode_last_message(Message::binary(),
+                          Mechanism::security_mechanism(),
+                          SecurityData::map()) -> Traffic::binary().
+encode_last_message(Message, Mechanism, SecurityData) 
+  when is_binary(Message) ->
+    {Frame, NewSecurityData} = build_message(Message, 
+                                             Mechanism,
+                                             SecurityData),
+    {encode_frame(?SMALL_LAST_MESSAGE, ?LARGE_LAST_MESSAGE, Frame),
+     NewSecurityData}.
 
 %% @doc Return data for a message
 -spec message_data(Message::message()) -> Frame::binary().

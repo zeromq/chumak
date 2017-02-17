@@ -59,6 +59,7 @@
               Transport::transport(),
               Host::list(),
               Port::integer(),
+              Resource::term(),
               Opts::peer_opts()) ->
                      {ok, Pid::pid()} | {error, Reason::term()}.
 connect(Type, tcp, Host, Port, Resource, Opts)
@@ -230,6 +231,8 @@ handle_info(InfoMessage, State) ->
 
 
 %% @hidden
+terminate(_Reason, #state{socket=nil}) ->
+    ok;
 terminate(_Reason, #state{socket=Socket}) ->
     gen_tcp:close(Socket),
     ok.
@@ -507,7 +510,8 @@ apply_opts(State, [{curve_server, false}| Opts]) ->
                            mechanism=null}, Opts);
 apply_opts(State = #state{security_data = CurveOptions}, [{KeyType, Key}| Opts])
     when KeyType == curve_secretkey; 
-         KeyType == curve_publickey ->
+         KeyType == curve_publickey;
+         KeyType == curve_clientkeys ->
     apply_opts(State#state{security_data = CurveOptions#{KeyType => Key}}, 
                Opts);
 apply_opts(State = #state{security_data = CurveOptions}, 
@@ -577,7 +581,7 @@ receive_commands(#state{step=ready, parent_pid=ParentPid}=State, NewDecoder, [Co
     end.
 
 send_invalid_socket_type_error(Socket, SocketType, PeerSocketType) ->
-    ReasonMsg = io_lib:format("Invalid socket-type ~s for ~p server", 
+    ReasonMsg = io_lib:format("Invalid socket-type ~s for ~p server",
                               [PeerSocketType, SocketType]),
     send_error_to_socket(Socket, ReasonMsg).
 

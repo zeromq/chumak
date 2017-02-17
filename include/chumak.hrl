@@ -13,10 +13,15 @@
                      sub | xsub |
                      push | pull |
                      pair.
--type socket_option()  :: curve_server |    %% true | false
-                          curve_publickey | %% binary()
-                          curve_secretkey | %% binary()
-                          curve_serverkey.  %% binary()
+
+-type z85_key() :: string().
+
+-type socket_option()  :: curve_server     | %% true | false
+                          curve_publickey  | %% binary()
+                          curve_secretkey  | %% binary()
+                          curve_serverkey  | %% binary()
+                          curve_clientkeys.  %% [binary() | z85_key()]
+                          
 -type security_mechanism() :: null |
                               curve.
 

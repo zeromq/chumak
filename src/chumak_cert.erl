@@ -1,10 +1,14 @@
 %% This Source Code Form is subject to the terms of the Mozilla Public
 %% License, v. 2.0. If a copy of the MPL was not distributed with this
 %% file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+%% @doc Very simple function to read a certificate.
+
 -module(chumak_cert).
 -include_lib("nacl/include/nacl.hrl").
 
-%% Very simple functions to read and write certificates.
+%% @doc Very simple function to read a certificate.
+%%
 %% Certificates are in ZPL format, identical to what is used by
 %% pyzmq (the Python ZMQ implementation).
 %%
@@ -12,7 +16,7 @@
 
 -export([read/1]).
 
-
+-spec read(FileName::string()) -> [{public_key | private_key, binary()}] | {error, Reason::term()}.
 read(FileName) ->
     {ok, File} = file:open(FileName, [read]),
     find_curve_section(File).
