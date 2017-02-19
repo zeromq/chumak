@@ -5,7 +5,6 @@
 %% @doc Very simple function to read a certificate.
 
 -module(chumak_cert).
--include_lib("nacl/include/nacl.hrl").
 
 %% @doc Very simple function to read a certificate.
 %%

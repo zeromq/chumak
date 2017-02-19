@@ -4,7 +4,7 @@
 
 %% @doc This module interfaces to the encryption library.
 %%
-%% Two variants are supported: enacl and nacerl. Which variant 
+%% Three variants are supported: nacl, enacl and nacerl. Which variant 
 %% is used is determined at the time of compilation. 
 %%
 %% If no encryption library is available, an error is thrown.
@@ -20,8 +20,12 @@
 -define(CURVE_MOD, nacerl).
 -endif.
 
+-ifdef(CHUMAK_CURVE_LIB_NACL).
+-define(CURVE_MOD, nacl).
+-endif.
+
 -ifdef(CHUMAK_CURVE_LIB_ENACL).
--define(CURVE_MOD, nacerl).
+-define(CURVE_MOD, enacl).
 -endif.
 
 -ifdef(CHUMAK_CURVE_LIB_NONE).
@@ -47,6 +51,9 @@ box_keypair() ->
     case ?CURVE_MOD of
         none ->
             throw(not_supported);
+        nacl ->
+            {nacl_box_keypair, Pk, Sk} = nacl:box_keypair(),
+            #{secret => Sk, public => Pk};
         _ ->
             ?CURVE_MOD:box_keypair()
     end.
@@ -59,14 +66,17 @@ box_keypair() ->
 %% @end
 -spec box(Message::binary(),
           Nonce::binary(),
-          SecretKey::binary(),
-          PublicKey::binary()) -> binary().
-box(Message, Nonce, SecretKey, PublicKey) ->
+          PublicKey::binary(),
+          SecretKey::binary()) -> binary().
+box(Message, Nonce, PublicKey, SecretKey) ->
     case ?CURVE_MOD of
         none ->
             throw(not_supported);
+        nacl ->
+            {nacl_envelope, _, Binary} = nacl:box(Message, Nonce, PublicKey, SecretKey),
+            Binary;
         _ ->
-            ?CURVE_MOD:box(Message, Nonce, SecretKey, PublicKey)
+            ?CURVE_MOD:box(Message, Nonce, PublicKey, SecretKey)
     end.
 
 %% @doc Decrypts+verifies a message from another party.
@@ -77,12 +87,15 @@ box(Message, Nonce, SecretKey, PublicKey) ->
 %% @end
 -spec box_open(Box::binary(),
                Nonce::binary(),
-               SecretKey::binary(),
-               PublicKey::binary()) -> binary().
-box_open(Box, Nonce, SecretKey, PublicKey) ->
+               PublicKey::binary(),
+               SecretKey::binary()) -> binary().
+box_open(Box, Nonce, PublicKey, SecretKey) ->
     case ?CURVE_MOD of
         none ->
             throw(not_supported);
+        nacl ->
+            {ok, Bin} = nacl:box_open(Box, Nonce, PublicKey, SecretKey),
+            Bin;
         _ ->
-            ?CURVE_MOD:box_open(Box, Nonce, SecretKey, PublicKey)
+            ?CURVE_MOD:box_open(Box, Nonce, PublicKey, SecretKey)
     end.

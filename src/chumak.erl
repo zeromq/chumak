@@ -53,7 +53,7 @@ socket(Type)
 %%
 %% Valid options are:
 %% <dl>
-%%   <dt>curve server</dt>
+%%   <dt>curve_server</dt>
 %%   <dd>- Set CURVE server role</dd>
 %%   <dd>- type: boolean()</dd>
 %%   <dd>Defines whether the socket will act as server for CURVE security. A

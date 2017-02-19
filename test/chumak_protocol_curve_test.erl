@@ -5,19 +5,18 @@
 -module(chumak_protocol_curve_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("nacl/include/nacl.hrl").
 
 messages_test() ->
-    #nacl_box_keypair{pk = ClientPublicKey, 
-                      sk = ClientSecretKey} = nacl:box_keypair(),
-    #nacl_box_keypair{pk = ServerPublicKey, 
-                      sk = ServerSecretKey} = nacl:box_keypair(),
-    #nacl_box_keypair{pk = ClientPublicTransientKey, 
-                      sk = ClientSecretTransientKey} = nacl:box_keypair(),
-    #nacl_box_keypair{pk = ServerPublicTransientKey, 
-                      sk = ServerSecretTransientKey} = nacl:box_keypair(),
-    #nacl_box_keypair{pk = CookiePublicKey, 
-                      sk = CookieSecretKey} = nacl:box_keypair(),
+    #{public := ClientPublicKey, 
+      secret := ClientSecretKey} = chumak_curve_if:box_keypair(),
+    #{public := ServerPublicKey, 
+      secret := ServerSecretKey} = chumak_curve_if:box_keypair(),
+    #{public := ClientPublicTransientKey, 
+      secret := ClientSecretTransientKey} = chumak_curve_if:box_keypair(),
+    #{public := ServerPublicTransientKey, 
+      secret := ServerSecretTransientKey} = chumak_curve_if:box_keypair(),
+    #{public := CookiePublicKey, 
+      secret := CookieSecretKey} = chumak_curve_if:box_keypair(),
     ClientShortNonce = 1,
     ServerShortNonce = 1,
     ServerSecData1 = #{mechanism => curve,
