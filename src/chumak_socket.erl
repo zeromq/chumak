@@ -8,7 +8,10 @@
 -module(chumak_socket).
 -behaviour(gen_server).
 
--record(state, {socket, socket_state}).
+-record(state, {socket, 
+                socket_state,
+                socket_options = #{}}).
+
 %% api behaviour
 -export([start_link/2]).
 
@@ -39,6 +42,9 @@ init({Type, Identity}) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+handle_call({set_option, OptionName, OptionValue}, _From, State) ->
+    set_option(OptionName, OptionValue, State);
 
 handle_call({connect, Protocol, Host, Port, Resource}, _From, State) ->
     connect(Protocol, Host, Port, Resource, State);
@@ -121,8 +127,26 @@ terminate(_Reason, _State) ->
 store({reply, M, S}, State) -> {reply, M, State#state{socket_state=S}};
 store({noreply, S}, State) -> {noreply, State#state{socket_state=S}}.
 
+set_option(Name, Value, #state{socket_options = Options} = State) 
+  when Name =:= curve_server, is_boolean(Value);
+       Name =:= curve_publickey, is_binary(Value);
+       Name =:= curve_secretkey, is_binary(Value);
+       Name =:= curve_serverkey, is_binary(Value) ->
+    {reply, ok, State#state{socket_options = Options#{Name => Value}}};
+set_option(Name, Value, #state{socket_options = Options} = State) 
+  when Name =:= curve_clientkeys ->
+    case validate_keys(Value) of
+        {ok, BinaryKeys} ->
+            {reply, ok, 
+             State#state{socket_options = Options#{Name => BinaryKeys}}};
+        {error, _Error} ->
+            {reply, {error, einval}, State}
+    end;
+set_option(_Name, _Value, State) ->
+    {reply, {error, einval}, State}.
+
 connect(Protocol, Host, Port, Resource, #state{socket=S, socket_state=T}=State) ->
-    {SocketType, PeerOpts} = peer_flags(S, T),
+    {SocketType, PeerOpts} = peer_flags(State),
 
     case chumak_peer:connect(SocketType, Protocol, Host, Port, Resource, PeerOpts) of
         {ok, Pid} ->
@@ -133,7 +157,7 @@ connect(Protocol, Host, Port, Resource, #state{socket=S, socket_state=T}=State) 
     end.
 
 accept(SocketPid, #state{socket=S, socket_state=T}=State) ->
-    {SocketType, PeerOpts} = peer_flags(S, T),
+    {SocketType, PeerOpts} = peer_flags(State),
 
     case chumak_peer:accept(SocketType, SocketPid, PeerOpts) of
         {ok, Pid} ->
@@ -159,8 +183,8 @@ recv_multipart(From, #state{socket=S, socket_state=T}=State) ->
     Reply = S:recv_multipart(T, From), 
     store(Reply, State).
 
-get_flags(#state{socket=S, socket_state=T}=State) ->
-    {reply, peer_flags(S, T), State}.
+get_flags(State) ->
+    {reply, peer_flags(State), State}.
 
 peer_ready(From, Identity, #state{socket=S, socket_state=T}=State) ->
     Reply = S:peer_ready(T, From, Identity),
@@ -201,8 +225,35 @@ exit_peer(PeerPid, #state{socket=S,  socket_state=T}=State) ->
     Reply = S:peer_disconected(T, PeerPid),
     store(Reply, State).
 
-peer_flags(Socket, SocketState) ->
+peer_flags(#state{socket=Socket, 
+                  socket_state=SocketState,
+                  socket_options=SocketOptions}) ->
     {SocketType, PeerOpts} = Socket:peer_flags(SocketState),
     Identity = Socket:identity(SocketState),
-    {SocketType, [{identity, Identity} | PeerOpts]}.
+    {SocketType, lists:flatten([{identity, Identity},
+                                maps:to_list(SocketOptions),
+                                PeerOpts])}.
 
+%% Make sure that kesy are either binaries or strings.
+%% Strings should be Z85 encoded, convert those to binaries.
+validate_keys(Keys) when is_list(Keys) ->
+    validate_keys(Keys, []);
+validate_keys(any) ->
+    {ok, any};
+validate_keys(_Other) ->
+    {error, einval}.
+
+validate_keys([], Acc) ->
+    {ok, lists:reverse(Acc)};
+validate_keys([Key | T], Acc) when is_list(Key) ->
+    try chumak_z85:decode(Key) of
+        Binary ->
+            validate_keys(T, [Binary | Acc])
+    catch
+        _:_ ->
+            {error, "Failed to decode Z85 key"}
+    end;
+validate_keys([Key | T], Acc) when is_binary(Key) ->
+    validate_keys(T, [Key | Acc]);
+validate_keys(_, _) ->
+    {error, "Invalid type for key"}.

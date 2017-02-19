@@ -22,10 +22,11 @@ Features
 5. Exclusive Pair Pattern
 6. Version Negotiation
 7. NULL Security Mechanism
-8. Error Handling
-9. Framing
-10. Socket-Type Property & Identity Property
-11. Backwards Interoperability with ZMTP 3.0
+8. CURVE Security Mechanism
+9. Error Handling
+10. Framing
+11. Socket-Type Property & Identity Property
+12. Backwards Interoperability with ZMTP 3.0
 
 
 Install
@@ -54,6 +55,46 @@ Build
 ```
 $ rebar3 compile
 ```
+
+By default, this will try to build a version of the application that
+includes support for the CURVE security model. For this it needs 
+a NIF that handles the cryptographic functions. The rebar3
+configuration has been set up so that 
+[nacerl](https://github.com/willemdj/NaCerl) will be fetched and built as a
+dependency. 
+
+Compilation of nacerl requires gcc and make. Since these tools may not be
+available on windows systems, a check on the availability of these tools
+will be done. If they are not available the dependency will
+not be fetched and there will be no support for the CURVE
+security model.
+
+Other options for the cryptographic functions are
+[enacl](https://github.com/jlouis/enacl) and
+[erlang-nacl](https://github.com/tonyg/erlang-nacl). Since it is not
+feasible to build these options completely using rebar3, they will have to
+be installed using other means. Chumak can be built in such a way
+that one of these other libraries is used by setting the environment
+variable `CHUMAK_CURVE_LIB`.
+
+The following values for `CHUMAK_CURVE_LIB` are supported:
+
+- nacerl - this is the minimal variant using the tweetnacl C library. By
+           default it is fetched and built from https://github.com/willemdj/NaCerl.
+
+- nacl   - this is similar to nacerl, but it depends on libsodium. The
+           repository for this is https://github.com/tonyg/erlang-nacl. The
+           the build process for Chumak will not automatically fetch and
+           build it.
+
+- enacl  - this also depends on libsodium, but it also requires 
+           an Erlang VM that supports dirty schedulers. The repository is 
+           https://github.com/jlouis/enacl. The build process for
+           Chumak will not automatically fetch and build it.
+
+- none   - no support for the CURVE security model. In this case no
+           dependency will be fetched and any attempt to use the CURVE
+           model will result in an error.
 
 Test
 ----
@@ -99,10 +140,6 @@ FAQ
    No. Everyone owns the piece of code they contribute.
    Please see [Contributing](CONTRIBUTING.md) for details.
 
-
-Future work
-------------
-1. CurveZMQ - add security, with which chumak is compatible.
 
 License
 --------

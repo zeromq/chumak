@@ -55,8 +55,8 @@ accept_peer(State, PeerPid) ->
 
 peer_ready(#chumak_pair{pending_send=PendingSend, pair_pid=PeerPid}=State, PeerPid, _Identity) ->
     case PendingSend of
-        {From, Traffic} ->
-            chumak_peer:send(PeerPid, Traffic, From);
+        {From, Multipart} ->
+            chumak_peer:send(PeerPid, Multipart, From);
         nil ->
             pass
     end,
@@ -83,13 +83,11 @@ recv(State, _From) ->
 
 send_multipart(#chumak_pair{pending_send=nil, pair_pid=nil}=State, Multipart, From) ->
     %% set send await
-    Traffic = chumak_protocol:encode_message_multipart(Multipart),
-    {noreply, State#chumak_pair{pending_send={From, Traffic}}};
+    {noreply, State#chumak_pair{pending_send={From, Multipart}}};
 
 send_multipart(#chumak_pair{pending_send=nil, pair_pid=PeerPid}=State, Multipart, From) ->
     %% send messsage now
-    Traffic = chumak_protocol:encode_message_multipart(Multipart),
-    chumak_peer:send(PeerPid, Traffic, From),
+    chumak_peer:send(PeerPid, Multipart, From),
     {noreply, State};
 
 send_multipart(State, _Multipart, _From) ->
