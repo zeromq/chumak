@@ -64,6 +64,9 @@ AllAvailable =
         lists:all(fun(Bool) -> Bool end, [IsAvailable(E) || E <- Executables])
     end,
 
+%% The only dependency where it makes sense to fecth and build it
+%% from here, is NaCerl. The other ones need libsodium and must be installed
+%% as a separate step.
 DetermineCurveDep = 
     fun() ->
         case os:type() of 
@@ -87,13 +90,13 @@ CurveLibEnv = os:getenv("CHUMAK_CURVE_LIB"),
 
 CurveDep = case CurveLibEnv of
                false ->
-                   DetermineCurveDep();
+                   undefined;
                Val ->
                    case string:to_lower(Val) of
                        "nacerl" ->
                            NaCerlDep;
                        _ ->
-                           undefined
+                           DetermineCurveDep()
                    end
            end,
 

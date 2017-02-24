@@ -57,44 +57,35 @@ $ rebar3 compile
 ```
 
 By default, this will try to build a version of the application that
-includes support for the CURVE security model. For this it needs 
-a NIF that handles the cryptographic functions. The rebar3
-configuration has been set up so that 
-[nacerl](https://github.com/willemdj/NaCerl) will be fetched and built as a
-dependency. 
+does not include support for the CURVE security model. 
 
-Compilation of nacerl requires gcc and make. Since these tools may not be
-available on windows systems, a check on the availability of these tools
-will be done. If they are not available the dependency will
-not be fetched and there will be no support for the CURVE
-security model.
-
-Other options for the cryptographic functions are
-[enacl](https://github.com/jlouis/enacl) and
-[erlang-nacl](https://github.com/tonyg/erlang-nacl). Since it is not
-feasible to build these options completely using rebar3, they will have to
-be installed using other means. Chumak can be built in such a way
-that one of these other libraries is used by setting the environment
-variable `CHUMAK_CURVE_LIB`.
+The environment variable `CHUMAK_CURVE_LIB` can be used to specify a
+NIF that implements the encrytion fucntions that are required to support
+the CURVE security model. 
 
 The following values for `CHUMAK_CURVE_LIB` are supported:
 
 - nacerl - this is the minimal variant using the tweetnacl C library. By
-           default it is fetched and built from https://github.com/willemdj/NaCerl.
+           default it is fetched and built from https://github.com/willemdj/NaCerl.  
+           
+           Compilation of nacerl requires gcc and make. Since these tools
+           may not be available on windows systems, a check on the
+           availability of these tools will be done. If they are not
+           available the dependency will not be fetched and there will be
+           no support for the CURVE security model.
 
 - nacl   - this is similar to nacerl, but it depends on libsodium. The
            repository for this is https://github.com/tonyg/erlang-nacl. The
            the build process for Chumak will not automatically fetch and
-           build it.
+           build it, but if `CHUMAK_CURVE_LIB` is set to "nacl", it will be
+           assumed that this library is available and it will be used.
 
 - enacl  - this also depends on libsodium, but it also requires 
            an Erlang VM that supports dirty schedulers. The repository is 
            https://github.com/jlouis/enacl. The build process for
-           Chumak will not automatically fetch and build it.
-
-- none   - no support for the CURVE security model. In this case no
-           dependency will be fetched and any attempt to use the CURVE
-           model will result in an error.
+           Chumak will not automatically fetch and build it, but if
+           `CHUMAK_CURVE_LIB` is set to "enacl", it will be assumed that
+           this library is available and it will be used.
 
 Test
 ----
