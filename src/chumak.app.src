@@ -4,7 +4,7 @@
 
 {application, chumak,
  [{description, "Erlang implementation of ZeroMQ Transport Protocol (ZMTP)"},
-  {vsn, "1.1.3"},
+  {vsn, "1.2.0"},
   {registered, []},
   {mod, { chumak, []}},
   {applications,
