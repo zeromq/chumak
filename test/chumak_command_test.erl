@@ -8,7 +8,7 @@
 
 decode_ping_test() ->
     Frame = <<4, "PING", 1, 0>>,
-    {ok, Command} = chumak_command:decode(Frame),
+    {ok, Command, #{}} = chumak_command:decode(Frame, #{}),
     ?assertEqual(chumak_command:command_name(Command), ping).
 
 
@@ -27,9 +27,9 @@ decode_ready_test() ->
               5, "X-Big",                %% Property name for big property test
               0, 0, 1, 144, BigProp/binary %% Property value for big property test
             >>,
-    {ok, Command} = chumak_command:decode(Frame),
+    {ok, Command, #{}} = chumak_command:decode(Frame, #{}),
     ?assertEqual(chumak_command:command_name(Command), ready),
-    ?assertEqual(chumak_command:ready_socket_type(Command), dealer),
+    ?assertEqual(chumak_command:ready_socket_type(Command), "dealer"),
     ?assertEqual(chumak_command:ready_identity(Command), "HELLO"),
     ?assertEqual(chumak_command:ready_resource(Command), "My-Resource"),
     ?assertEqual(chumak_command:ready_metadata(Command), #{
@@ -42,16 +42,17 @@ decode_wrong_ready_test() ->
               5, "READY",                %% Command name "READY"
               110, "Wrong or corrupted"  %% Wrong bytes
             >>,
-    {error, wrong_ready_message} = chumak_command:decode(Frame).
+    {error, wrong_ready_message} = chumak_command:decode(Frame, #{}).
 
 
 encode_ready_command_test() ->
     Frame1 = chumak_command:encode_ready(req, "", "", #{}),
-    ?assertEqual(Frame1, <<
-                           5, "READY",
-                           11, "Socket-Type",
-                           0, 0, 0, 3, "REQ"
-                         >>),
+    ?assertMatch(<<
+                   5, "READY",
+                   11, "Socket-Type",
+                   0, 0, 0, 3, "REQ", 
+                   _/binary
+                 >>, Frame1),
 
     Frame2 = chumak_command:encode_ready(rep, "my-name", "my-resource", #{}),
     ?assertEqual(Frame2, <<
@@ -94,13 +95,13 @@ encode_ready_command_test() ->
 
 decode_error_test() ->
     Frame = <<5, "ERROR", 19 ,"Invalid socket type">>,
-    {ok, Command} = chumak_command:decode(Frame),
+    {ok, Command, #{}} = chumak_command:decode(Frame, #{}),
     ?assertEqual(chumak_command:command_name(Command), error),
     ?assertEqual(chumak_command:error_reason(Command), "Invalid socket type").
 
 decode_invalid_error_test() ->
     Frame = <<5, "ERROR", 10, "Broken">>,
-    {error, wrong_error_message} = chumak_command:decode(Frame).
+    {error, wrong_error_message} = chumak_command:decode(Frame, #{}).
 
 encode_error_command_test() ->
     Frame = chumak_command:encode_error("Broken light-saber"),
@@ -119,7 +120,7 @@ encode_subscribe_command_test() ->
 
 decode_subscribe_command_test() ->
     Frame = <<9, "SUBSCRIBE", "warn">>,
-    {ok, Command} = chumak_command:decode(Frame),
+    {ok, Command, #{}} = chumak_command:decode(Frame, #{}),
     ?assertEqual(
        chumak_command:subscribe_subscription(Command),
        <<"warn">>
@@ -135,7 +136,7 @@ encode_cancel_command_test() ->
 
 decode_subscribe_cancel_test() ->
     Frame = <<6, "CANCEL", "fatal">>,
-    {ok, Command} = chumak_command:decode(Frame),
+    {ok, Command, #{}} = chumak_command:decode(Frame, #{}),
     ?assertEqual(
        chumak_command:cancel_subscription(Command),
        <<"fatal">>

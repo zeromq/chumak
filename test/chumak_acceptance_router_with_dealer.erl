@@ -16,14 +16,23 @@ single_test_() ->
 start() ->
     application:ensure_started(chumak),
     {ok, Socket} = chumak:socket(router),
+    #{public := ServerPK, secret := ServerSK} = chumak_curve_if:box_keypair(),
+    #{public := ClientPK, secret := ClientSK} = chumak_curve_if:box_keypair(),
+    ok = chumak:set_socket_option(Socket, curve_server, true),
+    ok = chumak:set_socket_option(Socket, curve_secretkey, ServerSK),
+    ok = chumak:set_socket_option(Socket, curve_clientkeys, [ClientPK]),
     {ok, _BindPid} = chumak:bind(Socket, tcp, "localhost", 5575),
-    Socket.
+    {Socket, #{curve_serverkey => ServerPK, 
+               curve_publickey => ClientPK, 
+               curve_secretkey => ClientSK}}.
 
-start_worker(Identity) ->
+start_worker(Identity, CurveOptions) ->
     Parent = self(),
     spawn_link(
       fun () ->
               {ok, Socket} = chumak:socket(dealer, Identity),
+              [chumak:set_socket_option(Socket, Option, Value) 
+               || {Option, Value} <- maps:to_list(CurveOptions)],
               {ok, _PeerPid} = chumak:connect(Socket, tcp, "localhost", 5575),
               worker_loop(Socket, Identity, Parent)
       end
@@ -38,13 +47,13 @@ worker_loop(Socket, Identity, Parent) ->
             Parent ! {recv, Identity, Multipart}
     end.
 
-stop(Pid) ->
+stop({Pid, _}) ->
     gen_server:stop(Pid).
 
 
-negotiate_multiparts(Socket) ->
-    start_worker("A"),
-    start_worker("B"),
+negotiate_multiparts({Socket, CurveOptions}) ->
+    start_worker("A", CurveOptions),
+    start_worker("B", CurveOptions),
     timer:sleep(200), %% wait client sockets to be estabilished
     ok = chumak:send_multipart(Socket, [<<"A">>, <<"My message one">>]),
     ok = chumak:send_multipart(Socket, [<<"B">>, <<"My message two">>]),

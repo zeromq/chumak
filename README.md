@@ -22,10 +22,11 @@ Features
 5. Exclusive Pair Pattern
 6. Version Negotiation
 7. NULL Security Mechanism
-8. Error Handling
-9. Framing
-10. Socket-Type Property & Identity Property
-11. Backwards Interoperability with ZMTP 3.0
+8. CURVE Security Mechanism
+9. Error Handling
+10. Framing
+11. Socket-Type Property & Identity Property
+12. Backwards Interoperability with ZMTP 3.0
 
 
 Install
@@ -54,6 +55,37 @@ Build
 ```
 $ rebar3 compile
 ```
+
+By default, this will try to build a version of the application that
+does not include support for the CURVE security model. 
+
+The environment variable `CHUMAK_CURVE_LIB` can be used to specify a
+NIF that implements the encrytion fucntions that are required to support
+the CURVE security model. 
+
+The following values for `CHUMAK_CURVE_LIB` are supported:
+
+- nacerl - this is the minimal variant using the tweetnacl C library. By
+           default it is fetched and built from https://github.com/willemdj/NaCerl.  
+           
+           Compilation of nacerl requires gcc and make. Since these tools
+           may not be available on windows systems, a check on the
+           availability of these tools will be done. If they are not
+           available the dependency will not be fetched and there will be
+           no support for the CURVE security model.
+
+- nacl   - this is similar to nacerl, but it depends on libsodium. The
+           repository for this is https://github.com/tonyg/erlang-nacl. The
+           the build process for Chumak will not automatically fetch and
+           build it, but if `CHUMAK_CURVE_LIB` is set to "nacl", it will be
+           assumed that this library is available and it will be used.
+
+- enacl  - this also depends on libsodium, but it also requires 
+           an Erlang VM that supports dirty schedulers. The repository is 
+           https://github.com/jlouis/enacl. The build process for
+           Chumak will not automatically fetch and build it, but if
+           `CHUMAK_CURVE_LIB` is set to "enacl", it will be assumed that
+           this library is available and it will be used.
 
 Test
 ----
@@ -99,10 +131,6 @@ FAQ
    No. Everyone owns the piece of code they contribute.
    Please see [Contributing](CONTRIBUTING.md) for details.
 
-
-Future work
-------------
-1. CurveZMQ - add security, with which chumak is compatible.
 
 License
 --------

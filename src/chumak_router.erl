@@ -58,8 +58,7 @@ send_multipart(#chumak_router{lbs=LBs}=State, Multipart, _From) when length(Mult
     [Identity|RemmaingMultipart] = Multipart,
     case chumak_lbs:get(LBs, binary_to_list(Identity)) of
         {NewLBs, PeerPid} ->
-            Traffic = chumak_protocol:encode_message_multipart(RemmaingMultipart),
-            chumak_peer:send(PeerPid, Traffic),
+            chumak_peer:send(PeerPid, RemmaingMultipart),
             {reply, ok, State#chumak_router{lbs=NewLBs}};
 
         none ->

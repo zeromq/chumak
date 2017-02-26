@@ -82,9 +82,8 @@ recv(State, _From) ->
     {reply, {error, efsm}, State}.
 
 send_multipart(#chumak_sub{xsub=true, peers=Peers}=State, Multipart, _From) ->
-    Traffic = chumak_protocol:encode_message_multipart(Multipart),
     lists:foreach(fun (PeerPid) ->
-                          chumak_peer:send(PeerPid, Traffic)
+                          chumak_peer:send(PeerPid, Multipart)
                   end, Peers),
     {reply, ok, State};
 

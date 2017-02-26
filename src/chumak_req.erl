@@ -66,13 +66,11 @@ peer_ready(State, _PeerPid, _Identity) ->
     {noreply, State}.
 
 send(#chumak_req{lb=LB, state=ready}=State, Data, From) ->
-    Traffic = chumak_protocol:encode_message_multipart([<<>>, Data]),
-
     case chumak_lb:get(LB) of
         none ->
             {reply, {error, no_connected_peers}, State};
         {NewLB, PeerPid} ->
-            chumak_peer:send(PeerPid, Traffic, From),
+            chumak_peer:send(PeerPid, [<<>>, Data], From),
             {noreply, State#chumak_req{
                         lb=NewLB,
                         state=wait_reply,

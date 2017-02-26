@@ -1,0 +1,125 @@
+%% This script tries to discover which library can be used 
+%% to support curve encryption (if any). Curve encryption is
+%% used by the CURVE security model.
+%%
+%% If the CHUMAK_CURVE_LIB environment variable is set,
+%% that determines what is used. Supported values are:
+%% - nacerl - this is the minimal variant using tweetnacl.
+%%            https://github.com/willemdj/NaCerl
+%% - nacl   - this is similar to nacerl, but it depends on libsodium.
+%%            https://github.com/tonyg/erlang-nacl
+%% - enacl  - this also depends on libsodium, but it also requires 
+%%            an Erlang VM that supports dirty schedulers.
+%%            https://github.com/jlouis/enacl
+%% - none   - no support for the CURVE security model.
+%%
+%% If the CHUMAK_CURVE_LIB environment variable is _not_ set,
+%% nacerl will be used. On Windows an additional check will be 
+%% preformed first: if gcc and make are not available, `none` will
+%% be assumed. 
+%% 
+%% Since it is not possible to reliably and completely build any of
+%% the options that depend on libsodium from rebar3, only in the `nacerl` 
+%% case the library will be fetched and built automatically as a 
+%% dependency. In the other cases you wil have to make the library available
+%% via other means.
+%%
+%% The selected option ("nacl", "enacl", "nacerl" or "none") will be 
+%% passed as a macro to the compiler. Based on this macro it is 
+%% determined which library is used by the code.
+
+%% Some of the ideas used here were found in 
+%% https://github.com/klacke/yaws/blob/master/rebar.config.script
+%% and 
+%% https://github.com/dgud/esdl/blob/master/rebar.config.script
+
+UpdateCfg = fun(Config, _Key, undefined) ->
+                    Config;
+                (Config, Key, NewVal) ->
+                    case lists:keyfind(Key, 1, Config) of
+                        {Key, Vals} ->
+                            NVals = [NewVal | Vals],
+                            lists:keyreplace(Key, 1, Config, {Key, NVals});
+                        false ->
+                            Config ++ [{Key, [NewVal]}]
+                    end
+            end,
+
+NaCerlDep = {nacerl, ".*", {git, "https://github.com/willemdj/NaCerl.git", {branch, "master"}}},
+
+IsAvailable =
+    fun(Executable) ->
+        case os:find_executable(Executable) of
+            false ->
+                io:format("Building Chumak with curve support on windows"
+                          " requires ~p~n", [Executable]),
+                false;
+            _ ->
+                true
+        end
+    end,
+
+AllAvailable =
+    fun(Executables) ->
+        lists:all(fun(Bool) -> Bool end, [IsAvailable(E) || E <- Executables])
+    end,
+
+%% The only dependency where it makes sense to fecth and build it
+%% from here, is NaCerl. The other ones need libsodium and must be installed
+%% as a separate step.
+DetermineCurveDep = 
+    fun() ->
+        case os:type() of 
+            {win32, _} ->
+                case AllAvailable(["gcc", "make"]) of
+                    true ->
+                        NaCerlDep;
+                    false ->
+                        io:format("not all required tools are available to build "
+                                  "curve security mechanism.~n"),
+                        undefined
+                end;
+            _ ->
+                NaCerlDep
+        end
+    end,
+
+%% If the CHUMAK_CURVE_LIB environment variable is set, that determines 
+%% what is used.
+CurveLibEnv = os:getenv("CHUMAK_CURVE_LIB"),
+
+CurveDep = case CurveLibEnv of
+               false ->
+                   undefined;
+               Val ->
+                   case string:to_lower(Val) of
+                       "nacerl" ->
+                           NaCerlDep;
+                       _ ->
+                           DetermineCurveDep()
+                   end
+           end,
+
+CurveCompilerOption = case CurveDep of
+                          NaCerlDep -> 
+                              {d, 'CHUMAK_CURVE_LIB_NACERL', true};
+                          _ -> 
+                              case CurveLibEnv of
+                                  false ->
+                                      undefined;
+                                  Value ->
+                                      case string:to_lower(Value) of
+                                          "nacerl" ->
+                                              {d, 'CHUMAK_CURVE_LIB_NACERL', true};
+                                          "nacl" ->
+                                              {d, 'CHUMAK_CURVE_LIB_NACL', true};
+                                          "enacl" ->
+                                              {d, 'CHUMAK_CURVE_LIB_ENACL', true};
+                                          "none" ->
+                                              undefined
+                                      end
+                              end
+                      end,
+
+Config2 = UpdateCfg(CONFIG, erl_opts, CurveCompilerOption),
+UpdateCfg(Config2, deps, CurveDep).

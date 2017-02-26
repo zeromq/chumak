@@ -52,8 +52,7 @@ send(#chumak_rep{last_recv_peer=nil}=State, _Data, _From) ->
 
 send(#chumak_rep{last_recv_peer=LastRecvPeer}=State, Data, _From)
   when is_pid(LastRecvPeer) ->
-    Traffic = chumak_protocol:encode_message_multipart([<<>>, Data]),
-    chumak_peer:send(LastRecvPeer, Traffic),
+    chumak_peer:send(LastRecvPeer, [<<>>, Data]),
     {reply, ok, State#chumak_rep{last_recv_peer=nil}}.
 
 

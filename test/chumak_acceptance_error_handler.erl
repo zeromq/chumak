@@ -5,7 +5,7 @@
 -module(chumak_acceptance_error_handler).
 -include_lib("eunit/include/eunit.hrl").
 
--define(PORT, 3010).
+-define(PORT, 3011).
 
 single_test_() ->
     [
@@ -49,7 +49,7 @@ negotiate_messages(_ServerPid) ->
     Message = wait_for_msg(),
 
     [
-     ?_assertEqual(Message, {server_error, "Invalid socket-type push for rep server"})
+     ?_assertEqual({server_error, "Invalid socket-type push for rep server"}, Message)
     ].
 
 wait_for_msg() ->
