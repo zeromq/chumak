@@ -110,6 +110,11 @@ Architecture
 -------------
 [Architecture](docs/architecture.md) describes the system structure.
 
+Help Wanted
+------------
+
+Would you like to help with the project? Pick any of the issues tagged [help wanted](https://github.com/zeromq/chumak/labels/help%20wanted) and contribute!
+
 Contributing
 ------------
 
