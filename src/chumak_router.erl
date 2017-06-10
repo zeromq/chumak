@@ -39,7 +39,7 @@ init(Identity) ->
 identity(#chumak_router{identity=I}) -> I.
 
 peer_flags(_State) ->
-    {router, [incomming_queue]}.
+    {router, [incoming_queue]}.
 
 accept_peer(State, PeerPid) ->
     {reply, {ok, PeerPid}, State}.
@@ -79,7 +79,7 @@ recv_multipart(State, _From) ->
     {reply, {error, efsm}, State}.
 
 peer_recv_message(State, _Message, _From) ->
-     %% This function will never called, because use incomming_queue property
+     %% This function will never called, because use incoming_queue property
     {noreply, State}.
 
 queue_ready(#chumak_router{recv_queue=RecvQueue, pending_recv=nil}=State, Identity, PeerPid) ->
@@ -98,5 +98,5 @@ peer_disconected(#chumak_router{lbs=LBs}=State, PeerPid) ->
 
 recv_message(Identity, PeerPid) ->
     IdentityBin = list_to_binary(Identity),
-    {out, Multipart} = chumak_peer:incomming_queue_out(PeerPid),
+    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
     [IdentityBin | Multipart].

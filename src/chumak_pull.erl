@@ -38,7 +38,7 @@ init(Identity) ->
 identity(#chumak_pull{identity=Identity}) -> Identity.
 
 peer_flags(_State) ->
-    {pull, [incomming_queue]}.
+    {pull, [incoming_queue]}.
 
 accept_peer(State, PeerPid) ->
     {reply, {ok, PeerPid}, State}.
@@ -77,24 +77,24 @@ recv_multipart(State, _From) ->
     {reply, {error, already_pending_recv}, State}.
 
 peer_recv_message(State, _Message, _From) ->
-    %% This function will never called, because use incomming_queue property
+    %% This function will never called, because use incoming_queue property
     {noreply, State}.
 
 queue_ready(#chumak_pull{pending_recv=nil, pending_recv_multipart=nil}=State, _Identity, PeerPid) ->
-    {out, Multipart} = chumak_peer:incomming_queue_out(PeerPid),
+    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
     NewRecvQueue = queue:in(Multipart, State#chumak_pull.recv_queue),
     {noreply, State#chumak_pull{recv_queue=NewRecvQueue}};
 
 %% when pending recv
 queue_ready(#chumak_pull{pending_recv={from, PendingRecv}, pending_recv_multipart=nil}=State, _Identity, PeerPid) ->
-    {out, Multipart} = chumak_peer:incomming_queue_out(PeerPid),
+    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
     Msg = binary:list_to_bin(Multipart),
     gen_server:reply(PendingRecv, {ok, Msg}),
     {noreply, State#chumak_pull{pending_recv=nil}};
 
 %% when pending recv_multipart
 queue_ready(#chumak_pull{pending_recv=nil, pending_recv_multipart={from, PendingRecv}}=State, _Identity, PeerPid) ->
-    {out, Multipart} = chumak_peer:incomming_queue_out(PeerPid),
+    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
     gen_server:reply(PendingRecv, {ok, Multipart}),
     {noreply, State#chumak_pull{pending_recv_multipart=nil}}.
 

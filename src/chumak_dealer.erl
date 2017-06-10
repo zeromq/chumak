@@ -37,7 +37,7 @@ init(Identity) ->
 identity(#chumak_dealer{identity=I}) -> I.
 
 peer_flags(_State) ->
-    {dealer, [incomming_queue]}.
+    {dealer, [incoming_queue]}.
 
 accept_peer(State, PeerPid) ->
     NewLb = chumak_lb:put(State#chumak_dealer.lb, PeerPid),
@@ -72,11 +72,11 @@ recv_multipart(State, _From) ->
     {reply, {error, efsm}, State}.
 
 peer_recv_message(State, _Message, _From) ->
-     %% This function will never called, because use incomming_queue property
+     %% This function will never called, because use incoming_queue property
     {noreply, State}.
 
 queue_ready(#chumak_dealer{state=wait_req, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
-    case chumak_peer:incomming_queue_out(PeerPid) of
+    case chumak_peer:incoming_queue_out(PeerPid) of
         {out, Messages} ->
             gen_server:reply(PendingRecv, {ok, Messages});
         empty ->
@@ -95,7 +95,7 @@ peer_disconected(#chumak_dealer{lb=LB}=State, PeerPid) ->
 
 %% implement direct recv from peer queues
 direct_recv_multipart(#chumak_dealer{lb=LB}=State, FirstPeerPid, PeerPid, From) ->
-    case chumak_peer:incomming_queue_out(PeerPid) of
+    case chumak_peer:incoming_queue_out(PeerPid) of
         {out, Messages} ->
             {reply, {ok, Messages}, State};
 

@@ -38,7 +38,7 @@ init(Identity) ->
 identity(#chumak_rep{identity=I}) -> I.
 
 peer_flags(_State) ->
-    {rep, [incomming_queue]}.
+    {rep, [incoming_queue]}.
 
 accept_peer(State, PeerPid) ->
     NewLb = chumak_lb:put(State#chumak_rep.lb, PeerPid),
@@ -74,7 +74,7 @@ recv_multipart(State, _From) ->
     {reply, {error, not_implemented_yet}, State}.
 
 peer_recv_message(State, _Message, _From) ->
-    %% This function will never called, because use incomming_queue property
+    %% This function will never called, because use incoming_queue property
     {noreply, State}.
 
 queue_ready(#chumak_rep{state=wait_req, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
@@ -120,7 +120,7 @@ direct_recv(#chumak_rep{lb=LB}=State, FirstPeerPid, PeerPid, From) ->
     end.
 
 recv_from_peer(PeerPid) ->
-    case chumak_peer:incomming_queue_out(PeerPid) of
+    case chumak_peer:incoming_queue_out(PeerPid) of
         {out, Messages} ->
             decode_messages(Messages);
         empty ->

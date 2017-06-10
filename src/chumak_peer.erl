@@ -13,14 +13,14 @@
 %% protocol behaviors
 -export([accept/3, accept/2, connect/4, connect/5, connect/6, send/2, send/3, send_error/2,
          send_subscription/2, send_cancel_subscription/2,
-         incomming_queue_out/1, reconnect/1, close/1]).
+         incoming_queue_out/1, reconnect/1, close/1]).
 %% gen_server behaviors
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2, init/1, terminate/2]).
 
 
 -type peer_step() :: waiting_peer | waiting_ready | ready. %% state of connection
 -type peer_opts() :: [PeerOpt::peer_opt()].
--type peer_opt()  :: incomming_queue  %% if peer bufferize instead notify parent pid.
+-type peer_opt()  :: incoming_queue  %% if peer bufferize instead notify parent pid.
                     | multi_socket_type
                     | {curve_server, boolean()}
                     | {curve_publickey, binary()}
@@ -42,8 +42,8 @@
           socket=nil          :: nil | gen_tcp:socket(),
           decoder=nil         :: nil | chumak_protocol:decoder(),
           parent_pid          :: pid(),
-          %% if incomming_queue is used these two properties will be used
-          incomming_queue=nil :: nil | queue:queue(),
+          %% if incoming_queue is used these two properties will be used
+          incoming_queue=nil :: nil | queue:queue(),
           msg_buf=[]          :: list(), %% used to bufferize msg until last message found
           %% pub compatible layer is used to wrap the received messages
           pub_compatible_layer=false :: false | true,
@@ -101,10 +101,10 @@ send_subscription(PeerPid, Subscription) ->
 send_cancel_subscription(PeerPid, Subscription) ->
     gen_server:cast(PeerPid, {send_cancel_subscription, Subscription}).
 
-%% @doc when incomming_queue is enabled, get item from queue
--spec incomming_queue_out(PeerPid::pid()) -> {out, Messages::list()} | empty.
-incomming_queue_out(PeerPid) ->
-    gen_server:call(PeerPid, incomming_queue_out).
+%% @doc when incoming_queue is enabled, get item from queue
+-spec incoming_queue_out(PeerPid::pid()) -> {out, Messages::list()} | empty.
+incoming_queue_out(PeerPid) ->
+    gen_server:call(PeerPid, incoming_queue_out).
 
 %% @doc used to force a peer reconnection, only used for tests
 reconnect(PeerPid) ->
@@ -135,17 +135,17 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 %% @hidden
-handle_call(incomming_queue_out, _From, #state{incomming_queue=nil}=State) ->
+handle_call(incoming_queue_out, _From, #state{incoming_queue=nil}=State) ->
     error_logger:error_report([
-                               incomming_queue_out,
-                               {error, incomming_queue_not_enabled}
+                               incoming_queue_out,
+                               {error, incoming_queue_not_enabled}
                               ]),
-    {reply, {error, incomming_queue_not_enabled}, State};
-handle_call(incomming_queue_out, _From, #state{incomming_queue=IncommingQueue}=State) ->
-    case queue:out(IncommingQueue) of
+    {reply, {error, incoming_queue_not_enabled}, State};
+handle_call(incoming_queue_out, _From, #state{incoming_queue=IncomingQueue}=State) ->
+    case queue:out(IncomingQueue) of
         {{value, Messages}, NewQueue} ->
-            {reply, {out, Messages}, State#state{incomming_queue=NewQueue}};
-        {empty, _IncommingQueue} ->
+            {reply, {out, Messages}, State#state{incoming_queue=NewQueue}};
+        {empty, _IncomingQueue} ->
             {reply, empty, State}
     end.
 
@@ -493,9 +493,9 @@ accepted_state(Type, Socket, Opts, ParentPid) ->
 
 apply_opts(State, []) ->
     State;
-apply_opts(State, [incomming_queue| Opts]) ->
-    IncommingQueue = queue:new(),
-    apply_opts(State#state{incomming_queue=IncommingQueue}, Opts);
+apply_opts(State, [incoming_queue| Opts]) ->
+    IncomingQueue = queue:new(),
+    apply_opts(State#state{incoming_queue=IncomingQueue}, Opts);
 apply_opts(State, [{identity, Identity}| Opts]) ->
     apply_opts(State#state{identity=Identity}, Opts);
 apply_opts(State, [pub_compatible_layer| Opts]) ->
@@ -616,13 +616,13 @@ deliver_message(#state{peer_version={3, 0}, pub_compatible_layer=true, parent_pi
 
     State;
 
-deliver_message(#state{incomming_queue=nil, parent_pid=ParentPid}=State, Message) ->
+deliver_message(#state{incoming_queue=nil, parent_pid=ParentPid}=State, Message) ->
     %% deliver message directly to parent pid without buffering
     ParentPid ! {peer_recv_message, Message, self()},
     State;
 
 deliver_message(State, Message) ->
-    #state{incomming_queue=IncommingQueue, msg_buf=Buffer,
+    #state{incoming_queue=IncomingQueue, msg_buf=Buffer,
            parent_pid=ParentPid, peer_identity=PeerIdentity} = State,
 
     NewBuffer = Buffer ++ [chumak_protocol:message_data(Message)],
@@ -633,7 +633,7 @@ deliver_message(State, Message) ->
             State#state{msg_buf=NewBuffer};
 
         false ->
-            NewQueue = queue:in(NewBuffer, IncommingQueue),
+            NewQueue = queue:in(NewBuffer, IncomingQueue),
             ParentPid ! {queue_ready, PeerIdentity, self()},
-            State#state{msg_buf=[], incomming_queue=NewQueue}
+            State#state{msg_buf=[], incoming_queue=NewQueue}
     end.
