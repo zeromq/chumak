@@ -162,7 +162,7 @@ recv(SocketPid)
 
 
 %% @doc recv a message for peers by a list of binaries
--spec recv_multipart(SocketPid::pid()) -> {ok, [Data::binary]} | {error, Reason::atom()}.
+-spec recv_multipart(SocketPid::pid()) -> {ok, [Data::binary()]} | {error, Reason::atom()}.
 recv_multipart(SocketPid)
   when is_pid(SocketPid) ->
     gen_server:call(SocketPid, recv_multipart, infinity).
