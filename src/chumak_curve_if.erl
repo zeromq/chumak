@@ -4,8 +4,8 @@
 
 %% @doc This module interfaces to the encryption library.
 %%
-%% Three variants are supported: nacl, enacl and nacerl. Which variant 
-%% is used is determined at the time of compilation. 
+%% Three variants are supported: nacl, enacl and nacerl. Which variant
+%% is used is determined at the time of compilation.
 %%
 %% If no encryption library is available, an error is thrown.
 
@@ -60,8 +60,8 @@ box_keypair() ->
 
 %% @doc Encrypts+authenticates a message to another party.
 %%
-%% Encrypt a Message to the party identified by that party's public key using your own 
-%% secret key to authenticate yourself. Requires a `Nonce' in addition. Returns the 
+%% Encrypt a Message to the party identified by that party's public key using your own
+%% secret key to authenticate yourself. Requires a `Nonce' in addition. Returns the
 %% encrypted message.
 %% @end
 -spec box(Message::binary(),

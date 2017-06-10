@@ -19,7 +19,7 @@
 -record(chumak_pair, {
           identity               :: string(),
           pair_pid               :: nil | pid(),
-          pending_send           :: nil | {term(), binary()},
+          pending_send           :: nil | {term(), [binary()]},
           pending_recv           :: nil | term(),
           pending_recv_multipart :: nil | term(),
           recv_queue             :: queue:queue()

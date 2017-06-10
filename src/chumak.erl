@@ -58,8 +58,8 @@ socket(Type)
 %%   <dd>- type: boolean()</dd>
 %%   <dd>Defines whether the socket will act as server for CURVE security. A
 %%   value of true means the socket will act as CURVE server. A value of false
-%%   means the socket will not act as CURVE server. When you set this you must 
-%%   also set the server's secret key using the curve_secretkey option. A server 
+%%   means the socket will not act as CURVE server. When you set this you must
+%%   also set the server's secret key using the curve_secretkey option. A server
 %%   socket does not need to know its own public key.</dd>
 %%
 %%   <dt>curve_serverkey</dt>
@@ -95,9 +95,9 @@ socket(Type)
 %%   clients with those public keys can connect to the server. You can provide
 %%   the keys as 32-byte binaries or as 40-character strings.</dd>
 %% </dl>
-                          
--spec set_socket_option(SocketPid::pid(), 
-                        Option::socket_option(), Value::term()) -> 
+
+-spec set_socket_option(SocketPid::pid(),
+                        Option::socket_option(), Value::term()) ->
     ok | {error, Reason::atom()}.
 set_socket_option(SocketPid, Option, Value)
   when is_pid(SocketPid),
@@ -105,7 +105,7 @@ set_socket_option(SocketPid, Option, Value)
     gen_server:call(SocketPid, {set_option, Option, Value}).
 
 %% @doc socket to a peer
--spec connect(SocketPid::pid(), Transport::transport(), 
+-spec connect(SocketPid::pid(), Transport::transport(),
               Host::string(), Port::integer(), Resource::term()) ->
                      {ok, PeerPid::pid()} | {error, Reason::atom()}.
 connect(SocketPid, Transport, Host, Port, Resource)
@@ -121,7 +121,9 @@ connect(SocketPid, Transport, Host, Port) ->
     connect(SocketPid, Transport, Host, Port, "").
 
 %% @doc bind in a host and port
--spec bind(SocketPid::pid(), Transport::transport(), Host::string(), Port::integer()) -> ok.
+-spec bind(SocketPid::pid(), Transport::transport(), Host::string(), Port::integer()) ->
+    {ok, pid()} | {error, term()}.
+
 bind(SocketPid, Transport, Host, Port)
   when is_pid(SocketPid),
        is_atom(Transport),
