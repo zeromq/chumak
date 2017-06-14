@@ -19,7 +19,7 @@
 -record(chumak_pair, {
           identity               :: string(),
           pair_pid               :: nil | pid(),
-          pending_send           :: nil | {term(), binary()},
+          pending_send           :: nil | {term(), [binary()]},
           pending_recv           :: nil | term(),
           pending_recv_multipart :: nil | term(),
           recv_queue             :: queue:queue()
@@ -42,7 +42,7 @@ init(Identity) ->
 identity(#chumak_pair{identity=Identity}) -> Identity.
 
 peer_flags(_State) ->
-    {pair, [incomming_queue]}.
+    {pair, [incoming_queue]}.
 
 accept_peer(#chumak_pair{pair_pid=nil}=State, PeerPid) ->
     {reply, {ok, PeerPid}, State#chumak_pair{pair_pid=PeerPid}};
@@ -106,7 +106,7 @@ recv_multipart(State, _From) ->
     {reply, {error, already_pending_recv}, State}.
 
 peer_recv_message(State, _Message, _From) ->
-     %% This function will never called, because use PAIR use the incomming_queue parameter
+     %% This function will never called, because use PAIR use the incoming_queue parameter
     {noreply, State}.
 
 queue_ready(
@@ -115,7 +115,7 @@ queue_ready(
                   pending_recv_multipart=PendingRecvMultiPart,
                   recv_queue=RecvQueue}=State, _Identity, PeerPid) ->
 
-    {out, Multipart} = chumak_peer:incomming_queue_out(PeerPid),
+    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
 
     NewRecvQueue = case {PendingRecv, PendingRecvMultiPart} of
                        {nil, nil} ->

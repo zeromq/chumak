@@ -51,7 +51,7 @@ apply_opts(State, [xpub | Opts]) ->
                 }, Opts).
 
 peer_flags(#chumak_pub{xpub=true}) ->
-    {xpub, [incomming_queue]};
+    {xpub, [incoming_queue]};
 
 peer_flags(_State) ->
     %% pub_compatible_layer is used to allow decoder to understand old style of subscription
@@ -104,12 +104,12 @@ peer_recv_message(State, _Message, _From) ->
 
 queue_ready(#chumak_pub{xpub=true, pending_recv=nil, recv_queue={some, RecvQueue}}=State, _Identity, PeerPid) ->
     %% queue ready for XPUB pattern
-    {out, Messages} = chumak_peer:incomming_queue_out(PeerPid),
+    {out, Messages} = chumak_peer:incoming_queue_out(PeerPid),
     NewRecvQueue = queue:in(Messages, RecvQueue),
     {noreply, State#chumak_pub{recv_queue={some, NewRecvQueue}}};
 
 queue_ready(#chumak_pub{xpub=true, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
-    {out, Multipart} = chumak_peer:incomming_queue_out(PeerPid),
+    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
     gen_server:reply(PendingRecv, {ok, Multipart}),
     {noreply, State#chumak_pub{pending_recv=nil}};
 

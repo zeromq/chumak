@@ -53,9 +53,9 @@ apply_opts(State, [xsub | Opts]) ->
 identity(#chumak_sub{identity=Identity}) -> Identity.
 
 peer_flags(#chumak_sub{xsub=true}) ->
-    {xsub, [incomming_queue]};
+    {xsub, [incoming_queue]};
 peer_flags(_State) ->
-    {sub, [incomming_queue]}.
+    {sub, [incoming_queue]}.
 
 accept_peer(#chumak_sub{peers=Peers}=State, PeerPid) ->
     NewPeers = [PeerPid | Peers],
@@ -106,14 +106,14 @@ peer_recv_message(State, _Message, _From) ->
     {noreply, State}.
 
 queue_ready(#chumak_sub{recv_queue=RecvQueue, pending_recv=nil}=State, _Identity, PeerPid) ->
-    {out, Messages} = chumak_peer:incomming_queue_out(PeerPid),
+    {out, Messages} = chumak_peer:incoming_queue_out(PeerPid),
     NewRecvQueue = queue:in(Messages, RecvQueue),
     {noreply, State#chumak_sub{recv_queue=NewRecvQueue}};
 
 queue_ready(State, _Identity, PeerPid) ->
     #chumak_sub{pending_recv={from, PendingRecv}, pending_recv_multipart=IsPendingMultipart} = State,
 
-    {out, Multipart} = chumak_peer:incomming_queue_out(PeerPid),
+    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
 
     case IsPendingMultipart of
         true ->
