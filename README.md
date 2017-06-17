@@ -60,7 +60,7 @@ By default, this will try to build a version of the application that
 does not include support for the CURVE security model. 
 
 The environment variable `CHUMAK_CURVE_LIB` can be used to specify a
-NIF that implements the encrytion fucntions that are required to support
+NIF that implements the encryption functions that are required to support
 the CURVE security model. 
 
 The following values for `CHUMAK_CURVE_LIB` are supported:
