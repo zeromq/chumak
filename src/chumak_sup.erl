@@ -14,7 +14,7 @@
 
 
 -export([start_link/0, init/1]).
--export([start_socket/1, start_socket/2, start_resource/0]).
+-export([start_socket/1, start_socket/2, start_resource/0, get_child_id/1]).
 
 
 start_link() ->
@@ -26,11 +26,17 @@ init(_Args) ->
 
 -spec start_socket(Type::socket_type(), Identity::string()) -> {ok, SocketPid::pid()} | {error, Reason::atom()}.
 start_socket(Type, Identity) ->
-    ProcessId = list_to_atom(string:concat(?CHILD_PROCESS_PREFIX, Identity)),
-    supervisor:start_child(?MODULE, #{
+    ProcessId = get_child_id(Identity),
+    case supervisor:start_child(?MODULE, #{
                              id=>ProcessId,
+                             restart=> transient,
                              start=>{?SOCKET, start_link, [Type, Identity]}
-                            }).
+                            }) of
+        {error, already_present} ->
+            supervisor:restart_child(?MODULE, ProcessId);
+        Res ->
+            Res
+    end.
 
 start_socket(Type) ->
     %% socket without identity not use supervisor because the identity
@@ -40,3 +46,6 @@ start_socket(Type) ->
 start_resource() ->
     %% Resource not use supervisor yet, because it's needed a identifier
     ?RESOURCE:start_link().
+
+get_child_id(Identity) ->
+    list_to_atom(string:concat(?CHILD_PROCESS_PREFIX, Identity)).

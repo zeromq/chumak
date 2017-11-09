@@ -8,9 +8,10 @@
 -module(chumak_socket).
 -behaviour(gen_server).
 
--record(state, {socket, 
+-record(state, {socket,
                 socket_state,
-                socket_options = #{}}).
+                socket_options = #{},
+                identity}).
 
 %% api behaviour
 -export([start_link/2]).
@@ -37,7 +38,7 @@ init({Type, Identity}) ->
             {stop, Reason};
         ModuleName ->
             {ok, S} = ModuleName:init(Identity),
-            {ok, #state{socket=ModuleName, socket_state=S}}
+            {ok, #state{socket=ModuleName, socket_state=S, identity = Identity}}
     end.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -107,7 +108,8 @@ handle_info({queue_ready, Identity, From}, State) ->
     queue_ready(Identity, From, State);
 
 handle_info({'EXIT', PeerPid, {shutdown, _Reason}}, State) ->
-    exit_peer(PeerPid, State);
+    exit_peer(PeerPid, State),
+    {stop, normal, State};
 
 handle_info(InfoMsg, State) ->
     error_logger:info_report([
