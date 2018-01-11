@@ -104,7 +104,11 @@ send_cancel_subscription(PeerPid, Subscription) ->
 %% @doc when incoming_queue is enabled, get item from queue
 -spec incoming_queue_out(PeerPid::pid()) -> {out, Messages::list()} | empty.
 incoming_queue_out(PeerPid) ->
-    gen_server:call(PeerPid, incoming_queue_out).
+    try 
+        gen_server:call(PeerPid, incoming_queue_out)
+    catch 
+        _Error:_Info -> ok
+    end.
 
 %% @doc used to force a peer reconnection, only used for tests
 reconnect(PeerPid) ->

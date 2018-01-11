@@ -110,6 +110,10 @@ handle_info({queue_ready, Identity, From}, State) ->
 handle_info({'EXIT', PeerPid, {shutdown, _Reason}}, State) ->
     exit_peer(PeerPid, State),
     {stop, normal, State};
+%% When the client is crashed we should not exit 
+%% and we should let the implementaion of type to deal with this
+handle_info({'EXIT', PeerPid, _Other}, State) ->
+    exit_peer(PeerPid, State);
 
 handle_info(InfoMsg, State) ->
     error_logger:info_report([
