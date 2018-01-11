@@ -104,7 +104,11 @@ send_cancel_subscription(PeerPid, Subscription) ->
 %% @doc when incoming_queue is enabled, get item from queue
 -spec incoming_queue_out(PeerPid::pid()) -> {out, Messages::list()} | empty.
 incoming_queue_out(PeerPid) ->
-    gen_server:call(PeerPid, incoming_queue_out).
+    try 
+        gen_server:call(PeerPid, incoming_queue_out)
+    catch 
+        _Error:_Info -> ok
+    end.
 
 %% @doc used to force a peer reconnection, only used for tests
 reconnect(PeerPid) ->
@@ -252,15 +256,15 @@ send_data(Data, #state{socket = Socket} = State) ->
 
 try_connect(#state{host=Host, port=Port, parent_pid=ParentPid, 
                    socket=OldSocketPid, security_data = CurveOptions}=State) ->
-    case gen_tcp:connect(Host, Port, ?SOCKET_OPTS([])) of
-        {ok, SocketPid} ->
+    case gen_tcp:connect(Host, Port, ?SOCKET_OPTS([])) of 
+        {ok, SocketPid} -> 
             case OldSocketPid of
                 nil ->
                     pass;
                 _ ->
-                    gen_server:cast(ParentPid, {peer_reconnected, self()})
+                    gen_server:cast(ParentPid, {peer_reconnected, self()}) %% tell chumak_socket we are connected
             end,
-
+            %% update state and start to decode the protocol
             NewState = State#state{
                          socket=SocketPid,
                          decoder=chumak_protocol:new_decoder(CurveOptions)
@@ -287,10 +291,10 @@ negotiate_greetings(#state{socket=Socket,
                            as_server=AsServer}=State) ->
     try
         %% send and receives greeting bytes
-        ok = send_greetting_step(Socket, AsServer, Mechanism),
-        {ok, GreetingFrame} = gen_tcp:recv(Socket, 64, ?GREETINGS_TIMEOUT),
+        ok = send_greetting_step(Socket, AsServer, Mechanism), %% send greeting message to another side
+        {ok, GreetingFrame} = gen_tcp:recv(Socket, 64, ?GREETINGS_TIMEOUT), %% waiting another side  greeting
         {ready, NewDecoder} = chumak_protocol:decode(State#state.decoder, GreetingFrame),
-        verify_mechanism(State, NewDecoder)
+        verify_mechanism(State, NewDecoder) 
     catch
         error:{badmatch, Error} ->
             error_logger:error_report([
@@ -478,7 +482,7 @@ pending_connect_state(Type, Host, Port, Resource, Opts, ParentPid) ->
                resource=Resource,
                conn_side=client
               },
-    apply_opts(State, Opts).
+    apply_opts(State, Opts).%% set opts before connect to the server
 
 accepted_state(Type, Socket, Opts, ParentPid) ->
     gen_tcp:controlling_process(Socket, self()),

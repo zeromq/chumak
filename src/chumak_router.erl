@@ -89,7 +89,7 @@ queue_ready(#chumak_router{recv_queue=RecvQueue, pending_recv=nil}=State, Identi
 
 queue_ready(#chumak_router{pending_recv={from, PendingRecv}}=State, Identity, PeerPid) ->
     MultiPart = recv_message(Identity, PeerPid),
-    gen_server:reply(PendingRecv, {ok, MultiPart}),
+    gen_server:reply(PendingRecv, {ok, MultiPart}), %% if there is a waiter reply directly
     {noreply, State#chumak_router{pending_recv=nil}}.
 
 peer_disconected(#chumak_router{lbs=LBs}=State, PeerPid) ->

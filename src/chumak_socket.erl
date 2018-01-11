@@ -32,11 +32,11 @@ start_link(Type, Identity)
 
 %% gen_server implementation
 init({Type, Identity}) ->
-    process_flag(trap_exit, true),
+    process_flag(trap_exit, true), %% trap exit 
     case chumak_pattern:module(Type) of
         {error, Reason} ->
             {stop, Reason};
-        ModuleName ->
+        ModuleName -> %% get the implementation of the type
             {ok, S} = ModuleName:init(Identity),
             {ok, #state{socket=ModuleName, socket_state=S, identity = Identity}}
     end.
@@ -66,7 +66,7 @@ handle_call(recv_multipart, From, State) ->
     recv_multipart(From, State);
 
 handle_call({bind, tcp, Host, Port}, _From, State) ->
-    Reply = chumak_bind:start_link(Host, Port),
+    Reply = chumak_bind:start_link(Host, Port), %% start a bind
     {reply, Reply, State};
 
 handle_call(get_flags, _From, State) ->
@@ -110,6 +110,10 @@ handle_info({queue_ready, Identity, From}, State) ->
 handle_info({'EXIT', PeerPid, {shutdown, _Reason}}, State) ->
     exit_peer(PeerPid, State),
     {stop, normal, State};
+%% When the client is crashed we should not exit 
+%% and we should let the implementaion of type to deal with this
+handle_info({'EXIT', PeerPid, _Other}, State) ->
+    exit_peer(PeerPid, State);
 
 handle_info(InfoMsg, State) ->
     error_logger:info_report([
@@ -194,13 +198,13 @@ peer_ready(From, Identity, #state{socket=S, socket_state=T}=State) ->
  
 pattern_support(State, Function, Args) ->
     pattern_support(State, Function, Args, warn).
-
+%% check the implementation support function or not
 pattern_support(#state{socket=S, socket_state=T}=State, Function, Args, Alert) ->
-    IsExported = erlang:function_exported(S, Function, length(Args) + 1),
+    IsExported = erlang:function_exported(S, Function, length(Args) + 1), 
 
     case {IsExported, Alert} of
         {true, _} ->
-            store(apply(S, Function, [T] ++ Args), State);
+            store(apply(S, Function, [T] ++ Args), State); %% call function and store new state 
 
         {false, warn} ->
             error_logger:warning_report([

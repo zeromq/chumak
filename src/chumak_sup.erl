@@ -26,14 +26,14 @@ init(_Args) ->
 
 -spec start_socket(Type::socket_type(), Identity::string()) -> {ok, SocketPid::pid()} | {error, Reason::atom()}.
 start_socket(Type, Identity) ->
-    ProcessId = get_child_id(Identity),
+    ProcessId = get_child_id(Identity), %% generate an atom ?
     case supervisor:start_child(?MODULE, #{
                              id=>ProcessId,
                              restart=> transient,
                              start=>{?SOCKET, start_link, [Type, Identity]}
                             }) of
         {error, already_present} ->
-            supervisor:restart_child(?MODULE, ProcessId);
+            supervisor:restart_child(?MODULE, ProcessId); 
         Res ->
             Res
     end.
