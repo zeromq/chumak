@@ -102,16 +102,16 @@ peer_recv_message(State, _Message, _From) ->
      %% This function will never called, because use PUB not receive messages
     {noreply, State}.
 
-queue_ready(#chumak_pub{xpub=true, pending_recv=nil, recv_queue={some, RecvQueue}}=State, _Identity, PeerPid) ->
-    %% queue ready for XPUB pattern
-    {out, Messages} = chumak_peer:incoming_queue_out(PeerPid),
-    NewRecvQueue = queue:in(Messages, RecvQueue),
-    {noreply, State#chumak_pub{recv_queue={some, NewRecvQueue}}};
-
-queue_ready(#chumak_pub{xpub=true, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
-    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
-    gen_server:reply(PendingRecv, {ok, Multipart}),
-    {noreply, State#chumak_pub{pending_recv=nil}};
+queue_ready(#chumak_pub{xpub=true}=State, _Identity, PeerPid) ->
+    case chumak_peer:incoming_queue_out(PeerPid) of
+        {out, Multipart} ->
+            {noreply,handle_queue_ready(State,Multipart)};
+        empty ->
+            {noreply,State};
+        {error,Info}->
+            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_pub,Info]),
+            {noreply,State}
+    end;
 
 queue_ready(State, _Identity, _PeerPid) ->
      %% This function will never called, because use PUB not receive messages
@@ -128,3 +128,12 @@ peer_subscribe(#chumak_pub{subscriptions=Subscriptions}=State, PeerPid, Subscrip
 peer_cancel_subscribe(#chumak_pub{subscriptions=Subscriptions}=State, PeerPid, Subscription) ->
     NewSubscriptions = chumak_subscriptions:delete(Subscriptions, PeerPid, Subscription),
     {noreply, State#chumak_pub{subscriptions=NewSubscriptions}}.
+
+handle_queue_ready(#chumak_pub{xpub=true, pending_recv=nil, recv_queue={some, RecvQueue}}=State,Data)->
+    %% queue ready for XPUB pattern
+    NewRecvQueue = queue:in(Data, RecvQueue),
+    State#chumak_pub{recv_queue={some, NewRecvQueue}};
+
+handle_queue_ready(#chumak_pub{xpub=true, pending_recv={from, PendingRecv}}=State, Data)->
+    gen_server:reply(PendingRecv, {ok, Data}),
+    State#chumak_pub{pending_recv=nil}.

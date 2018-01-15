@@ -76,14 +76,18 @@ peer_recv_message(State, _Message, _From) ->
     {noreply, State}.
 
 queue_ready(#chumak_dealer{state=wait_req, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
-    case chumak_peer:incoming_queue_out(PeerPid) of
-        {out, Messages} ->
-            gen_server:reply(PendingRecv, {ok, Messages});
-        empty ->
-            gen_server:reply(PendingRecv, {error, queue_empty})
-    end,
-
-    FutureState = State#chumak_dealer{state=idle, pending_recv=none},
+    FutureState = 
+        case chumak_peer:incoming_queue_out(PeerPid) of
+            {out, Messages} ->
+                gen_server:reply(PendingRecv, {ok, Messages}),
+                State#chumak_dealer{state=idle, pending_recv=none};
+            empty ->
+                gen_server:reply(PendingRecv, {error, queue_empty}),
+                State#chumak_dealer{state=idle, pending_recv=none};
+            {error,Info}->
+                error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_dealer,Info]),
+                State
+        end,
     {noreply, FutureState};
 
 queue_ready(State, _Identity, _PeerPid) ->

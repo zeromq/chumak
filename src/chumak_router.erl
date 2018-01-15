@@ -86,8 +86,11 @@ queue_ready(State, Identity, PeerPid) ->
     case chumak_peer:incoming_queue_out(PeerPid) of
         {out, Multipart} ->
             IdentityBin = list_to_binary(Identity),
-            {noreply,recv_message(State,[IdentityBin | Multipart])};
+            {noreply,handle_queue_ready(State,[IdentityBin | Multipart])};
         empty ->
+            {noreply,State};
+        {error,Info}->
+            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_router,Info]),
             {noreply,State}
     end.
 
@@ -95,10 +98,10 @@ peer_disconected(#chumak_router{lbs=LBs}=State, PeerPid) ->
     NewLBs = chumak_lbs:delete(LBs, PeerPid),
     {noreply, State#chumak_router{lbs=NewLBs}}.
 
-recv_message(#chumak_router{recv_queue=RecvQueue, pending_recv=nil}=State,Data)->
-    NewRecvQueue = queue:in(MultiPart, RecvQueue),
+handle_queue_ready(#chumak_router{recv_queue=RecvQueue, pending_recv=nil}=State,Data)->
+    NewRecvQueue = queue:in(Data, RecvQueue),
     State#chumak_router{recv_queue=NewRecvQueue};
 
-recv_message(#chumak_router{pending_recv={from, PendingRecv}}=State, Data)->
+handle_queue_ready(#chumak_router{pending_recv={from, PendingRecv}}=State, Data)->
     gen_server:reply(PendingRecv, {ok, Data}), %% if there is a waiter reply directly
     State#chumak_router{pending_recv=nil}.

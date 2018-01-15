@@ -80,23 +80,31 @@ peer_recv_message(State, _Message, _From) ->
     %% This function will never called, because use incoming_queue property
     {noreply, State}.
 
-queue_ready(#chumak_pull{pending_recv=nil, pending_recv_multipart=nil}=State, _Identity, PeerPid) ->
-    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
-    NewRecvQueue = queue:in(Multipart, State#chumak_pull.recv_queue),
-    {noreply, State#chumak_pull{recv_queue=NewRecvQueue}};
-
-%% when pending recv
-queue_ready(#chumak_pull{pending_recv={from, PendingRecv}, pending_recv_multipart=nil}=State, _Identity, PeerPid) ->
-    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
-    Msg = binary:list_to_bin(Multipart),
-    gen_server:reply(PendingRecv, {ok, Msg}),
-    {noreply, State#chumak_pull{pending_recv=nil}};
-
-%% when pending recv_multipart
-queue_ready(#chumak_pull{pending_recv=nil, pending_recv_multipart={from, PendingRecv}}=State, _Identity, PeerPid) ->
-    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
-    gen_server:reply(PendingRecv, {ok, Multipart}),
-    {noreply, State#chumak_pull{pending_recv_multipart=nil}}.
+queue_ready(State, _Identity, PeerPid) ->
+    case chumak_peer:incoming_queue_out(PeerPid) of
+        {out, Multipart} ->
+            {noreply,handle_queue_ready(State,Multipart)};
+        empty ->
+            {noreply,State};
+        {error,Info}->
+            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_pull,Info]),
+            {noreply,State}
+    end.
 
 peer_disconected(State, _PeerPid) ->
     {noreply, State}.
+
+handle_queue_ready(#chumak_pull{pending_recv=nil, pending_recv_multipart=nil}=State,Data)->
+    NewRecvQueue = queue:in(Data, State#chumak_pull.recv_queue),
+    State#chumak_pull{recv_queue=NewRecvQueue};
+
+%% when pending recv
+handle_queue_ready(#chumak_pull{pending_recv={from, PendingRecv}, pending_recv_multipart=nil}=State, Data)->
+    Msg = binary:list_to_bin(Data),
+    gen_server:reply(PendingRecv, {ok, Msg}),
+    State#chumak_pull{pending_recv=nil};
+
+%% when pending recv_multipart    
+handle_queue_ready(#chumak_pull{pending_recv=nil, pending_recv_multipart={from, PendingRecv}}=State, Data)->
+    gen_server:reply(PendingRecv, {ok, Data}),
+    State#chumak_pull{pending_recv_multipart=nil}.
