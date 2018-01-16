@@ -124,6 +124,9 @@ recv_from_peer(PeerPid) ->
         {out, Messages} ->
             decode_messages(Messages);
         empty ->
+            empty;
+        {error,Info}->
+            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_rep,Info]),
             empty
     end.
 

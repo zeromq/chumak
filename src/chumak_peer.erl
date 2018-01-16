@@ -107,7 +107,7 @@ incoming_queue_out(PeerPid) ->
     try 
         gen_server:call(PeerPid, incoming_queue_out)
     catch 
-        _Error:_Info -> ok
+        _Error:Info -> {error,Info}
     end.
 
 %% @doc used to force a peer reconnection, only used for tests

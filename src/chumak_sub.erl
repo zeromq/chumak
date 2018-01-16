@@ -105,24 +105,16 @@ peer_recv_message(State, _Message, _From) ->
      %% This function will never called, because use PUB not receive messages
     {noreply, State}.
 
-queue_ready(#chumak_sub{recv_queue=RecvQueue, pending_recv=nil}=State, _Identity, PeerPid) ->
-    {out, Messages} = chumak_peer:incoming_queue_out(PeerPid),
-    NewRecvQueue = queue:in(Messages, RecvQueue),
-    {noreply, State#chumak_sub{recv_queue=NewRecvQueue}};
-
 queue_ready(State, _Identity, PeerPid) ->
-    #chumak_sub{pending_recv={from, PendingRecv}, pending_recv_multipart=IsPendingMultipart} = State,
-
-    {out, Multipart} = chumak_peer:incoming_queue_out(PeerPid),
-
-    case IsPendingMultipart of
-        true ->
-            gen_server:reply(PendingRecv, {ok, Multipart});
-        false ->
-            FullMsg = binary:list_to_bin(Multipart),
-            gen_server:reply(PendingRecv, {ok, FullMsg})
-    end,
-    {noreply, State#chumak_sub{pending_recv=nil, pending_recv_multipart=nil}}.
+    case chumak_peer:incoming_queue_out(PeerPid) of
+        {out, Multipart} ->
+            {noreply,handle_queue_ready(State,Multipart)};
+        empty ->
+            {noreply,State};
+        {error,Info}->
+            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_sub,Info]),
+            {noreply,State}
+    end.
 
 peer_disconected(#chumak_sub{peers=Peers}=State, PeerPid) ->
     NewPeers = lists:delete(PeerPid, Peers),
@@ -156,3 +148,18 @@ send_cancel_subscription_to_peers(Topic, Peers) ->
     lists:foreach(fun (PeerPid) ->
                           chumak_peer:send_cancel_subscription(PeerPid, Topic)
                   end, Peers).
+
+handle_queue_ready(#chumak_sub{recv_queue=RecvQueue, pending_recv=nil}=State,Data)->
+    NewRecvQueue = queue:in(Data, RecvQueue),
+    State#chumak_sub{recv_queue=NewRecvQueue};
+
+handle_queue_ready(#chumak_sub{pending_recv={from, PendingRecv}, 
+        pending_recv_multipart=IsPendingMultipart} = State, Data)->
+    case IsPendingMultipart of
+        true ->
+            gen_server:reply(PendingRecv, {ok, Data});
+        false ->
+            FullMsg = binary:list_to_bin(Data),
+            gen_server:reply(PendingRecv, {ok, FullMsg})
+    end,
+    State#chumak_sub{pending_recv=nil, pending_recv_multipart=nil}.
