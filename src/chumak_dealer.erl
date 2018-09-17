@@ -25,6 +25,7 @@
 
 valid_peer_type(rep)    -> valid;
 valid_peer_type(router) -> valid;
+valid_peer_type(dealer) -> valid;
 valid_peer_type(_)      -> invalid.
 
 init(Identity) ->
