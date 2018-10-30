@@ -12,6 +12,7 @@
 
 -export([valid_peer_type/1, init/1, init/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
+         unblock/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
          queue_ready/3, peer_disconected/2, subscribe/2, cancel/2,
          peer_reconnected/2, identity/1
@@ -80,6 +81,14 @@ recv(#chumak_sub{pending_recv=nil, recv_queue=RecvQueue}=State, From) ->
 
 recv(State, _From) ->
     {reply, {error, efsm}, State}.
+
+unblock(#chumak_sub{pending_recv={from, PendingRecv}}=State, _From) ->
+    NewState = State#chumak_sub{pending_recv=nil, pending_recv_multipart=nil},
+    gen_server:reply(PendingRecv, {error, again}),
+    {reply, ok, NewState};
+
+unblock(#chumak_sub{pending_recv=nil}=State, _From) ->
+    {reply, ok, State}.
 
 send_multipart(#chumak_sub{xsub=true, peers=Peers}=State, Multipart, _From) ->
     lists:foreach(fun (PeerPid) ->
