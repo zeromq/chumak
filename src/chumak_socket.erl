@@ -65,6 +65,9 @@ handle_call({send_multipart, Multipart}, From, State) ->
 handle_call(recv_multipart, From, State) ->
     recv_multipart(From, State);
 
+handle_call(unblock, From, State) ->
+    unblock(From, State);
+
 handle_call({bind, tcp, Host, Port}, _From, State) ->
     Reply = chumak_bind:start_link(Host, Port), %% start a bind
     {reply, Reply, State};
@@ -184,6 +187,10 @@ send_multipart(Multipart, From, #state{socket=S, socket_state=T}=State) ->
 
 recv_multipart(From, #state{socket=S, socket_state=T}=State) ->
     Reply = S:recv_multipart(T, From), 
+    store(Reply, State).
+
+unblock(From, #state{socket=S, socket_state=T}=State) ->
+    Reply = S:unblock(T, From),
     store(Reply, State).
 
 get_flags(State) ->

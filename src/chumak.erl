@@ -12,6 +12,7 @@
 
 -export([start/2, stop/1]).
 -export([socket/1, socket/2, connect/4, connect/5, bind/4, send/2, recv/1, send_multipart/2, recv_multipart/1,
+         unblock/1,
          set_socket_option/3,
          cancel/2, subscribe/2,
          resource/0, attach_resource/3,
@@ -167,6 +168,13 @@ recv_multipart(SocketPid)
   when is_pid(SocketPid) ->
     gen_server:call(SocketPid, recv_multipart, infinity).
 
+
+%% @doc unblock a socket that is waiting on a message,
+%% return {error, again}
+-spec unblock(SocketPid::pid()) -> ok.
+unblock(SocketPid)
+  when is_pid(SocketPid) ->
+    gen_server:call(SocketPid, unblock).
 
 %% @doc subscribe a topic, only supported in SUB and XSUB patterns.
 -spec subscribe(SocketPid::pid(), Topic::binary()) -> ok.

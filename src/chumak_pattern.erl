@@ -31,6 +31,8 @@
 -callback queue_ready(State::pattern_state(), Identity::string(), From::pid()) -> Reply::term().
 -callback peer_disconected(State::pattern_state(), PeerPid::pid()) -> Reply::term().
 
+-callback unblock(State::pattern_state(), From::term()) -> ok.
+
 
 %% @doc find matching pattern for a socket type.
 -spec module(SocketType::socket_type()) -> module_name() | {error, invalid_socket_type}.
