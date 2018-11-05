@@ -12,6 +12,7 @@
 
 -export([valid_peer_type/1, init/1, init/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
+         unblock/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
          queue_ready/3, peer_disconected/2, peer_subscribe/3, peer_cancel_subscribe/3,
          identity/1
@@ -97,6 +98,14 @@ recv_multipart(#chumak_pub{xpub=true}=State, _From) ->
 
 recv_multipart(State, _From) ->
     {reply, {error, not_use}, State}.
+
+unblock(#chumak_pub{pending_recv={from, PendingRecv}}=State, _From) ->
+    NewState = State#chumak_pub{pending_recv=nil},
+    gen_server:reply(PendingRecv, {error, again}),
+    {reply, ok, NewState};
+
+unblock(#chumak_pub{pending_recv=nil}=State, _From) ->
+    {reply, ok, State}.
 
 peer_recv_message(State, _Message, _From) ->
      %% This function will never called, because use PUB not receive messages

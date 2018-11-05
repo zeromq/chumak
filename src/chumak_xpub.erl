@@ -12,6 +12,7 @@
 -define(PUB, chumak_pub).
 -export([valid_peer_type/1, init/1, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
+         unblock/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
          queue_ready/3, peer_disconected/2, peer_subscribe/3, peer_cancel_subscribe/3,
          identity/1
@@ -29,6 +30,7 @@ send(State, Data, From) -> ?PUB:send(State, Data, From).
 recv(State, From) -> ?PUB:recv(State, From).
 send_multipart(State, Data, From) -> ?PUB:send_multipart(State, Data, From).
 recv_multipart(State, From) -> ?PUB:recv_multipart(State, From).
+unblock(State, From) -> ?PUB:unblock(State, From).
 peer_recv_message(State, Message, From) -> ?PUB:peer_recv_message(State, Message, From).
 queue_ready(State, Identity, From) -> ?PUB:queue_ready(State, Identity, From).
 peer_disconected(State, PeerPid) -> ?PUB:peer_disconected(State, PeerPid).
