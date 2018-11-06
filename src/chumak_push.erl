@@ -12,6 +12,7 @@
 
 -export([valid_peer_type/1, init/1, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
+         unblock/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
          queue_ready/3, peer_disconected/2, identity/1
         ]).
@@ -59,6 +60,9 @@ send_multipart(#chumak_push{lb=LB}=State, Multipart, From) ->
     end.
 
 recv_multipart(State, _From) ->
+    {reply, {error, not_use}, State}.
+
+unblock(State, _From) ->
     {reply, {error, not_use}, State}.
 
 peer_recv_message(State, _Message, _From) ->

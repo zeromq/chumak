@@ -12,6 +12,7 @@
 
 -export([valid_peer_type/1, init/1, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
+         unblock/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
          queue_ready/3, peer_disconected/2, identity/1
         ]).
@@ -79,6 +80,23 @@ recv_multipart(State, _From) ->
 peer_recv_message(State, _Message, _From) ->
     %% This function will never called, because use incoming_queue property
     {noreply, State}.
+
+unblock(#chumak_pull{pending_recv=Recv,pending_recv_multipart=MultiRecv}=State, _From) ->
+    NewState =
+        case Recv of
+            {from, From} ->
+                gen_server:reply(From, {error, again}),
+                State#chumak_pull{pending_recv=nil};
+            nil -> State
+        end,
+    MultiNewState =
+        case MultiRecv of
+            {from, MultiFrom} ->
+                gen_server:reply(MultiFrom, {error, again}),
+                NewState#chumak_pull{pending_recv_multipart=nil};
+            nil -> NewState
+        end,
+    {reply, ok, MultiNewState}.
 
 queue_ready(State, _Identity, PeerPid) ->
     case chumak_peer:incoming_queue_out(PeerPid) of

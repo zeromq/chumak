@@ -12,6 +12,7 @@
 
 -export([valid_peer_type/1, init/1, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
+         unblock/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
          queue_ready/3, peer_disconected/2, identity/1]).
 
@@ -109,6 +110,13 @@ send_multipart(State, _Multipart, _From) ->
 recv_multipart(State, _From) ->
     {reply, {error, not_implemented_yet}, State}.
 
+unblock(#chumak_req{pending_recv={from, PendingRecv}}=State, _From) ->
+    NewState = State#chumak_req{pending_recv=nil},
+    gen_server:reply(PendingRecv, {error, again}),
+    {reply, ok, NewState};
+
+unblock(#chumak_req{pending_recv=nil}=State, _From) ->
+    {reply, ok, State}.
 
 peer_recv_message(#chumak_req{state=wait_reply, last_peer_sent=From}=State, Message, From) ->
     case chumak_protocol:message_data(Message) of
