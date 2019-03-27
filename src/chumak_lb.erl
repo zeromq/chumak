@@ -5,7 +5,7 @@
 %% @doc ZeroMQ Simple Round-robin load-balancer
 
 -module(chumak_lb).
--export([new/0, put/2, get/1, delete/2, is_empty/1]).
+-export([new/0, put/2, get/1, delete/2, is_empty/1, to_list/1]).
 
 -type lb() :: list().
 
@@ -35,3 +35,6 @@ delete(LB, Item)->
 -spec is_empty(LB::lb()) -> true | false.
 is_empty([]) -> true;
 is_empty(_)  -> false.
+
+to_list(LB) ->
+  LB.

@@ -15,7 +15,7 @@
          unblock/1,
          set_socket_option/3,
          cancel/2, subscribe/2,
-         resource/0, attach_resource/3,
+         resource/0, attach_resource/3, detach_resource/2,
          version/0]).
 
 -define(SUPERVISOR, chumak_sup).
@@ -208,6 +208,11 @@ resource() ->
 -spec attach_resource(ResourcePid::pid(), Resource::binary(), SocketPid::pid()) -> ok.
 attach_resource(ResourcePid, Resource, SocketPid) ->
     gen_server:cast(ResourcePid, {attach, Resource, SocketPid}).
+
+%% @doc detach socket resource from resource server.
+-spec detach_resource(ResourcePid::pid(), Resource::binary()) -> ok.
+detach_resource(ResourcePid, Resource) ->
+    gen_server:cast(ResourcePid, {detach, Resource}).
 
 
 -spec version() -> {ok, Version::version()} | {error, Reason::atom()}.

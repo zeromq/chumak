@@ -11,7 +11,7 @@
 -module(chumak_dealer).
 -behaviour(chumak_pattern).
 
--export([valid_peer_type/1, init/1, peer_flags/1, accept_peer/2, peer_ready/3,
+-export([valid_peer_type/1, init/1, terminate/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
          unblock/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
@@ -37,6 +37,9 @@ init(Identity) ->
     {ok, State}.
 
 identity(#chumak_dealer{identity=I}) -> I.
+
+terminate(_Reason, _State) ->
+    ok.
 
 peer_flags(_State) ->
     {dealer, [incoming_queue]}.

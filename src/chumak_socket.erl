@@ -14,7 +14,7 @@
                 identity}).
 
 %% api behaviour
--export([start_link/2]).
+-export([start_link/2, stop/1]).
 
 %% gen_server behaviors
 -export([code_change/3, handle_call/3, handle_cast/2, handle_info/2, init/1, terminate/2]).
@@ -27,6 +27,10 @@ start_link(Type, Identity)
   when is_atom(Type),
        is_list(Identity) ->
     gen_server:start_link(?MODULE, {Type, Identity}, []).
+
+-spec stop(Pid :: pid()) -> ok.
+stop(Pid) ->
+    gen_server:stop(Pid).
 
 
 
@@ -123,8 +127,8 @@ handle_info(InfoMsg, State) ->
                              ]),
     {noreply, State}.
 
-terminate(_Reason, _State) ->
-    %% TODO: close all sockets
+terminate(Reason, #state{socket=Mod, socket_state=S}) ->
+    Mod:terminate(Reason, S),
     ok.
 
 %% private api

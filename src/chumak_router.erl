@@ -10,7 +10,7 @@
 -module(chumak_router).
 -behaviour(chumak_pattern).
 
--export([valid_peer_type/1, init/1, peer_flags/1, accept_peer/2, peer_ready/3,
+-export([valid_peer_type/1, init/1, terminate/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
          unblock/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
@@ -36,6 +36,13 @@ init(Identity) ->
                pending_recv=nil
               },
     {ok, State}.
+
+terminate(_Reason, #chumak_router{pending_recv=Recv}) ->
+    case Recv of
+        {from, From} -> gen_server:reply(From, {error, closed});
+        _ -> ok
+    end,
+    ok.
 
 identity(#chumak_router{identity=I}) -> I.
 
@@ -114,3 +121,15 @@ handle_queue_ready(#chumak_router{recv_queue=RecvQueue, pending_recv=nil}=State,
 handle_queue_ready(#chumak_router{pending_recv={from, PendingRecv}}=State, Data)->
     gen_server:reply(PendingRecv, {ok, Data}), %% if there is a waiter reply directly
     State#chumak_router{pending_recv=nil}.
+
+terminate_lbs(none) ->
+  ok;
+terminate_lbs({_, Val, Next}) ->
+  terminate_lb(chumak_lb:to_list(Val)),
+  terminate_lbs(chumak_lbs:next(Next)).
+
+terminate_lb([]) ->
+  ok;
+terminate_lb([H | T]) ->
+  chumak_peer:close(H),
+  terminate_lb(T).
