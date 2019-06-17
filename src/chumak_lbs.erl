@@ -5,13 +5,14 @@
 %% @doc ZeroMQ Round-robin load-balancer based on an identifier
 
 -module(chumak_lbs).
--export([new/0, put/3, get/2, delete/2]).
+-export([new/0, put/3, get/2, delete/2, iterator/1, next/1]).
 
 -record(lbs, {
           map  :: map(),  %% map of load balancers
           xref            %% reverse reference useful to locate identity at deletion
 }).
 -type lbs() :: #lbs{}.
+-type lbs_iterator() :: maps:ierator().
 
 
 %% @doc returns an empty load-balancer by identifier
@@ -54,6 +55,16 @@ delete(#lbs{xref=LBXRef}=LBs, Item)->
         error ->
             LBs
     end.
+
+%% @doc create iterator over load-balancer identifiers
+-spec iterator(LBs::lbs()) -> lbs_iterator().
+iterator(#lbs{map=Map}) ->
+  maps:iterator(Map).
+
+%% @doc retrieve next key-value association in load-balancer identifiers
+-spec next(Iter::lbs_iterator()) -> {Key::term(), Val::term(), NextIter::lbs_iterator()} | none.
+next(Iter) ->
+  maps:next(Iter).
 
 %% Private API
 delete_by_identifier(#lbs{map=LBMap, xref=LBXRef}=LBs, Identifier, Item) ->

@@ -10,7 +10,7 @@
 -module(chumak_req).
 -behaviour(chumak_pattern).
 
--export([valid_peer_type/1, init/1, peer_flags/1, accept_peer/2, peer_ready/3,
+-export([valid_peer_type/1, init/1, terminate/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
          unblock/2,
          send_multipart/3, recv_multipart/2, peer_recv_message/3,
@@ -53,6 +53,13 @@ init(Identity) ->
                msg_buf=[]
               },
     {ok, State}.
+
+terminate(_Reason, #chumak_req{pending_recv=Recv}) ->
+    case Recv of
+        {from, From} -> gen_server:reply(From, {error, closed});
+        _ -> ok
+    end,
+    ok.
 
 identity(#chumak_req{identity=I}) -> I.
 

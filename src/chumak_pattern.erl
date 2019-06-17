@@ -16,6 +16,7 @@
 
 -callback valid_peer_type(SocketType::socket_type()) -> valid | invalid.
 -callback init(Identity::string()) -> {ok, pattern_state()}.
+-callback terminate(Reason::term(), State::pattern_state()) -> ok.
 -callback peer_flags(State::pattern_state()) -> {SocketType::socket_type(), [PeerFlag::term()]}.
 -callback accept_peer(State::pattern_state(), PeerPid::pid()) -> Reply::term().
 -callback peer_ready(State::pattern_state(), PeerPid::pid(), Identity::binary()) -> Reply::term().

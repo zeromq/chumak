@@ -21,14 +21,16 @@ start_link() ->
 
 
 -record(state, {
-          resources :: map()
+          resources :: map(),
+          monitors :: map()
 }).
 
 %% gen_server implementation
 init(_Args) ->
     process_flag(trap_exit, true),
     State = #state{
-               resources=#{}
+               resources=#{},
+               monitors=#{}
               },
     {ok, State}.
 
@@ -59,9 +61,26 @@ handle_call({route_resource, Resource}, _From, #state{resources=Resources}=State
             {reply, close, State}
     end.
 
-handle_cast({attach, Resource, SocketPid}, #state{resources=Resources}=State) ->
+handle_cast({attach, Resource, SocketPid}, #state{resources=Resources, monitors=Monitors}=State) ->
     NewResources = Resources#{Resource => SocketPid},
-    {noreply, State#state{resources=NewResources}};
+
+    MonRef = erlang:monitor(process, SocketPid),
+    NewMonitors = Monitors#{SocketPid => {Resource, MonRef}},
+    {noreply, State#state{resources=NewResources, monitors=NewMonitors}};
+
+handle_cast({detach, Resource}, #state{resources=Resources, monitors=Monitors}=State) ->
+    case maps:take(Resource, Resources) of
+        {SocketPid, NewResources} ->
+            case maps:take(SocketPid, Monitors) of
+                {{Resource, MonRef}, NewMonitors} ->
+                    erlang:demonitor(MonRef),
+                    {noreply, State#state{resources=NewResources, monitors=NewMonitors}};
+                _ ->
+                    {noreply, State#state{resources=NewResources}}
+            end;
+        _ ->
+            {noreply, State}
+    end;
 
 handle_cast(CastMsg, State) ->
     error_logger:info_report([
@@ -70,6 +89,15 @@ handle_cast(CastMsg, State) ->
                               {msg, CastMsg}
                              ]),
     {noreply, State}.
+
+handle_info({'DOWN', MonRef, process, SocketPid, _}, #state{resources=Resources, monitors=Monitors}=State) ->
+  case maps:take(SocketPid, Monitors) of
+      {{Resource, MonRef}, NewMonitors} ->
+          NewResources = maps:remove(Resource, Resources),
+          {noreply, State#state{resources=NewResources, monitors=NewMonitors}};
+      _ ->
+          {noreply, State}
+  end;
 
 handle_info({'EXIT', _Pid, {shutdown, invalid_resource}}, State) ->
     {noreply, State};
