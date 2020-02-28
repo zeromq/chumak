@@ -1,20 +1,17 @@
-chumak 
-=========
+# chumak 
 
 ![Chumaki](docs/images/chumaki.jpg)
 
-What is chumak?
--------------------
+## What is chumak?
 
 `chumak` is a library written in [Erlang](https://www.erlang.org/). It implements the ZeroMQ Message Transport Protocol (ZMTP). `chumak` supports ZMTP version [3.1](http://rfc.zeromq.org/spec:37/ZMTP/).
 
-Goal
-----
+## Goal
 
 The goal of `chumak` application is to provide up-to-date native Erlang implementation of ZMTP.
 
-Features
---------
+## Features
+
 1. Resource Property *(NEW in 3.1!)*
 2. Request-Reply pattern
 3. Publish-Subscribe pattern
@@ -29,8 +26,7 @@ Features
 12. Backwards Interoperability with ZMTP 3.0
 
 
-Install
--------
+## Install
 
 You can install `chumak` from [hex.pm](https://hex.pm/packages/chumak) by including the following in your `rebar.config`:
 
@@ -43,15 +39,14 @@ where _X.Y.Z_ is one of the [release versions](https://github.com/chovencorp/chu
 
 For more info on rebar3 dependencies see the [rebar3 docs](http://www.rebar3.org/docs/dependencies).
 
-Usage
------
+## Usage
 
 See [examples](examples). Otherwise use just like a regular Erlang/OTP application.
 
 If you would like to use [python tests](python-test) to try language interop, you need to have [pyzmq](https://github.com/zeromq/pyzmq) installed. 
 
-Build
------
+## Build
+
 ```
 $ rebar3 compile
 ```
@@ -87,42 +82,40 @@ The following values for `CHUMAK_CURVE_LIB` are supported:
            `CHUMAK_CURVE_LIB` is set to "enacl", it will be assumed that
            this library is available and it will be used.
 
-Test
-----
+## Test
+
 ```
 $ rebar3 eunit -c
 ```
 The `-c` will allow you to see the test coverage by running the command below.
 
-Coverage
---------
+## Coverage
+
 ```
 $ rebar3 cover
 ```
 
-Generate Docs
--------------
+## Generate Docs
+
 ```
 $ rebar3 edoc
 ```
 
-Architecture
--------------
+## Architecture
+
 [Architecture](docs/architecture.md) describes the system structure.
 
-Help Wanted
-------------
+## Help Wanted
 
 Would you like to help with the project? Pick any of the issues tagged [help wanted](https://github.com/zeromq/chumak/labels/help%20wanted) and contribute!
 
-Contributing
-------------
+## Contributing
 
 See  [Contributing](CONTRIBUTING.md).
 
 
-FAQ
----
+## FAQ
+
 1. Why another Erlang implementation?
 
    Because the existing Erlang implementations and bindings are out of date.
@@ -137,13 +130,13 @@ FAQ
    Please see [Contributing](CONTRIBUTING.md) for details.
 
 
-License
---------
+## License
+
 This project is licensed under Mozilla Public License Version 2.0.
 See [license](LICENSE) for complete license terms.
 
-Etymology
----------
+## Etymology
+
 From [Wikipedia](https://en.wikipedia.org/wiki/Chumak):
 
 >Chumak (Ukrainian: чумак) is a historic occupation on the territory of the modern Ukraine 
