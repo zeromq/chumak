@@ -30,7 +30,7 @@ The goal of `chumak` application is to provide up-to-date native Erlang implemen
 
 You can install `chumak` from [hex.pm](https://hex.pm/packages/chumak) by including the following in your `rebar.config`:
 
-```
+```erlang
 {deps,[
 	{chumak, "X.Y.Z"}
 ]}.
