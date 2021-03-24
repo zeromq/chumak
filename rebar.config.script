@@ -80,7 +80,7 @@ DetermineCurveDep =
                         undefined
                 end;
             _ ->
-                NaCerlDep
+                undefined
         end
     end,
 
