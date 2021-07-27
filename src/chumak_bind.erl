@@ -12,7 +12,7 @@
 start_link(Host, Port) ->
     ParentPid = self(),
 
-    case inet:getaddr(Host, inet) of
+    case getaddr(Host) of
         {ok, Addr} ->
             case gen_tcp:listen(Port, ?SOCKET_OPTS([{ip, Addr}])) of
                 {ok, ListenSocket} ->
@@ -59,3 +59,11 @@ listener(ListenSocket, ParentPid) ->
                                       ]),
             listener(ListenSocket, ParentPid)
     end.
+
+-spec getaddr(Host::string()) -> {ok, inet:ip_address() | any} | {error, Reason::term()}.
+
+getaddr("*") ->
+    {ok, any};
+
+getaddr(Host) ->
+    inet:getaddr(Host, inet).
