@@ -142,7 +142,7 @@ From [Wikipedia](https://en.wikipedia.org/wiki/Chumak):
 >Chumak (Ukrainian: чумак) is a historic occupation on the territory of the modern Ukraine 
 >as merchants or traders, primarily known for the trade in salt.
 
-## How to publish new Hex.om version
+## How to publish new Hex.pm version
 
 This info is here for maintainers - since I keep forgetting how to do this.
 
