@@ -141,3 +141,12 @@ From [Wikipedia](https://en.wikipedia.org/wiki/Chumak):
 
 >Chumak (Ukrainian: чумак) is a historic occupation on the territory of the modern Ukraine 
 >as merchants or traders, primarily known for the trade in salt.
+
+## How to publish new Hex.om version
+
+This info is here for maintainers - since I keep forgetting how to do this.
+
+1. Adjust the version of the package in `src/chumak.app.src`
+2. Login to hex.pm: `rebar3 hex user auth`
+3. Put in your hex.pm username and your password (ignore the warning) - enter it 2 more times! (weird)
+3. Publish: `rebar3 hex publish`
