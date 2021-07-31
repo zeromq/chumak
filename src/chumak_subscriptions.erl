@@ -55,8 +55,6 @@ peer_match(Subscriptions, PeerPid, FirstPart) ->
 
                   (PeerSubscription) ->
                       case binary:match(FirstPart, PeerSubscription) of
-                          nomatch ->
-                              false;
                           {0, _} ->
                               true;
                           _ ->
