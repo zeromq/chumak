@@ -102,7 +102,7 @@ send_cancel_subscription(PeerPid, Subscription) ->
     gen_server:cast(PeerPid, {send_cancel_subscription, Subscription}).
 
 %% @doc when incoming_queue is enabled, get item from queue
--spec incoming_queue_out(PeerPid::pid()) -> {out, Messages::list()} | empty.
+-spec incoming_queue_out(PeerPid::pid()) -> {out, Messages::list()} | empty | {error, _}.
 incoming_queue_out(PeerPid) ->
     try 
         gen_server:call(PeerPid, incoming_queue_out)
@@ -350,7 +350,7 @@ do_handshake(#state{socket = Socket} = State, Decoder) ->
     end.
 
 -spec handshake(State::state()) -> 
-          {ok, state()} | {error, Reason::string(), state()}.
+          {ok, state()} | {error, Reason::term(), state()}.
 %% As described in https://rfc.zeromq.org/spec:26/CURVEZMQ/
 handshake(#state{mechanism = curve, socket = Socket,
                  as_server = AsServer, decoder = Decoder,
@@ -452,9 +452,7 @@ handle_ready_response2(#state{socket=Socket,
             {ok, NewState};
         {error, {shutdown, invalid_peer_socket_type}, _} = InvSockTypeError->
             send_invalid_socket_type_error(Socket, SocketType, PeerSocketType),
-            InvSockTypeError;
-        {error, _, _} = OtherError ->
-            OtherError
+            InvSockTypeError
     end.
 
 validate_peer_socket_type(#state{type=SocketType} = State,

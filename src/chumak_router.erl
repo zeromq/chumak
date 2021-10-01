@@ -121,15 +121,3 @@ handle_queue_ready(#chumak_router{recv_queue=RecvQueue, pending_recv=nil}=State,
 handle_queue_ready(#chumak_router{pending_recv={from, PendingRecv}}=State, Data)->
     gen_server:reply(PendingRecv, {ok, Data}), %% if there is a waiter reply directly
     State#chumak_router{pending_recv=nil}.
-
-terminate_lbs(none) ->
-  ok;
-terminate_lbs({_, Val, Next}) ->
-  terminate_lb(chumak_lb:to_list(Val)),
-  terminate_lbs(chumak_lbs:next(Next)).
-
-terminate_lb([]) ->
-  ok;
-terminate_lb([H | T]) ->
-  chumak_peer:close(H),
-  terminate_lb(T).

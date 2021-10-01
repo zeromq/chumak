@@ -88,14 +88,11 @@ box(Message, Nonce, PublicKey, SecretKey) ->
 -spec box_open(Box::binary(),
                Nonce::binary(),
                PublicKey::binary(),
-               SecretKey::binary()) -> binary().
+               SecretKey::binary()) -> {ok, binary()}.
 box_open(Box, Nonce, PublicKey, SecretKey) ->
     case ?CURVE_MOD of
         none ->
             throw(not_supported);
-        nacl ->
-            {ok, Bin} = nacl:box_open(Box, Nonce, PublicKey, SecretKey),
-            Bin;
         _ ->
             ?CURVE_MOD:box_open(Box, Nonce, PublicKey, SecretKey)
     end.
