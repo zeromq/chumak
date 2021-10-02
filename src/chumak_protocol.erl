@@ -672,7 +672,7 @@ encode_message_multipart(Multipart, Mechanism, SecurityData) ->
 %% @doc Generate a traffic based on a message
 -spec encode_more_message(Message::binary(),
                           Mechanism::security_mechanism(),
-                          SecurityData::map()) -> Traffic::binary().
+                          SecurityData::map()) -> {Traffic::binary(), map()}.
 encode_more_message(Message, Mechanism, SecurityData) 
   when is_binary(Message) ->
     {Frame, NewSecurityData} = build_message(Message, 
@@ -684,7 +684,7 @@ encode_more_message(Message, Mechanism, SecurityData)
 %% @doc Generate a traffic based on a message
 -spec encode_last_message(Message::binary(),
                           Mechanism::security_mechanism(),
-                          SecurityData::map()) -> Traffic::binary().
+                          SecurityData::map()) -> {Traffic::binary(), map()}.
 encode_last_message(Message, Mechanism, SecurityData) 
   when is_binary(Message) ->
     {Frame, NewSecurityData} = build_message(Message, 
