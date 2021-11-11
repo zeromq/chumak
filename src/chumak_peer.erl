@@ -272,12 +272,7 @@ try_connect(#state{host=Host, port=Port, parent_pid=ParentPid,
             negotiate_greetings(NewState);
 
         {error, Reason} ->
-            error_logger:error_report([
-                                       {host, Host},
-                                       {port, Port},
-                                       connection_error,
-                                       {error, Reason}
-                                      ]),
+            io:format("~p tcp connection failed on host ~p, port ~p because ~p~n", [?MODULE, Host, Port, Reason]),
             timer:sleep(?RECONNECT_TIMEOUT),
             try_connect(State)
     end.

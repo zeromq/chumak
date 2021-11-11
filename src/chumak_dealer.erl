@@ -24,10 +24,13 @@
           state=idle        :: idle | wait_req
          }).
 
+-define(RETRIES, 20).
+
 valid_peer_type(rep)    -> valid;
 valid_peer_type(router) -> valid;
 valid_peer_type(dealer) -> valid;
 valid_peer_type(_)      -> invalid.
+
 
 init(Identity) ->
     State = #chumak_dealer{
@@ -71,7 +74,7 @@ recv_multipart(#chumak_dealer{state=idle, lb=LB}=State, From) ->
         none ->
             {noreply, State#chumak_dealer{state=wait_req, pending_recv={from, From}}};
         {NewLB, PeerPid} ->
-            direct_recv_multipart(State#chumak_dealer{lb=NewLB}, PeerPid, PeerPid, From)
+            direct_recv_multipart(State#chumak_dealer{lb=NewLB}, PeerPid, PeerPid, From, ?RETRIES)
     end;
 recv_multipart(State, _From) ->
     {reply, {error, efsm}, State}.
@@ -111,19 +114,20 @@ peer_disconected(#chumak_dealer{lb=LB}=State, PeerPid) ->
     {noreply, State#chumak_dealer{lb=NewLB}}.
 
 %% implement direct recv from peer queues
-direct_recv_multipart(#chumak_dealer{lb=LB}=State, FirstPeerPid, PeerPid, From) ->
+direct_recv_multipart(#chumak_dealer{lb=LB}=State, FirstPeerPid, PeerPid, From, Retries) ->
     case chumak_peer:incoming_queue_out(PeerPid) of
         {out, Messages} ->
             {reply, {ok, Messages}, State};
 
-        {error, {timeout, _}} ->
-            direct_recv_multipart(State, FirstPeerPid, PeerPid, From);
+        {error, {timeout, _}} when Retries > 0 ->
+            io:format("chumak_dealer:direct_recv_multipart/5 timed out, retrying ~p more times~n", [Retries]),
+            direct_recv_multipart(State, FirstPeerPid, PeerPid, From, Retries - 1);
 
         empty ->
             case chumak_lb:get(LB) of
                 {NewLB, FirstPeerPid} ->
                     {noreply, State#chumak_dealer{state=wait_req, pending_recv={from, From}, lb=NewLB}};
                 {NewLB, OtherPeerPid} ->
-                    direct_recv_multipart(State#chumak_dealer{lb=NewLB}, FirstPeerPid, OtherPeerPid, From)
+                    direct_recv_multipart(State#chumak_dealer{lb=NewLB}, FirstPeerPid, OtherPeerPid, From, Retries)
             end
     end.
