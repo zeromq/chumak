@@ -116,6 +116,9 @@ direct_recv_multipart(#chumak_dealer{lb=LB}=State, FirstPeerPid, PeerPid, From) 
         {out, Messages} ->
             {reply, {ok, Messages}, State};
 
+        {error, {timeout, _}} ->
+            direct_recv_multipart(State, FirstPeerPid, PeerPid, From);
+
         empty ->
             case chumak_lb:get(LB) of
                 {NewLB, FirstPeerPid} ->
