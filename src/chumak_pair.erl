@@ -112,7 +112,7 @@ send_multipart(#chumak_pair{pending_send=nil, pair_pid=nil}=State, Multipart, Fr
     {noreply, State#chumak_pair{pending_send={From, Multipart}}};
 
 send_multipart(#chumak_pair{pending_send=nil, pair_pid=PeerPid}=State, Multipart, From) ->
-    %% send messsage now
+    %% send message now
     chumak_peer:send(PeerPid, Multipart, From),
     {noreply, State};
 

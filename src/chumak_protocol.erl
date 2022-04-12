@@ -4,8 +4,8 @@
 
 %% @doc Parser of ZeroMQ protocol
 %%
-%% This module was created to make responsability of decode and make a buffer of ZeroMQ wire protocol,
-%% the client of this module needs to anounce that more bytes were been received by peer.
+%% This module was created to make responsibility of decode and make a buffer of ZeroMQ wire protocol,
+%% the client of this module needs to announce that more bytes were been received by peer.
 %%
 
 -module(chumak_protocol).
@@ -480,11 +480,11 @@ decode(#decoder{state=ready}=Decoder, Frame) ->
         <<_:5, _:1, 1:1, _:1, Size:64, _RemaingFrame/binary>> ->
             require_size(Decoder, Size+9, Frame, NextState);
 
-        %% if size is remaing for small frame
+        %% if size is remaining for small frame
         <<_:5, _:1, 0:1, _:1>> ->
             require_size(Decoder, 2, Frame, ready);
 
-        %% if size is remaing for large frame
+        %% if size is remaining for large frame
         <<_:5, _:1, 1:1, _:1, _TooShortToBeSize/binary>> ->
             require_size(Decoder, 9, Frame, ready);
 

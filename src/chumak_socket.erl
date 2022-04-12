@@ -115,7 +115,7 @@ handle_info({queue_ready, Identity, From}, State) ->
     queue_ready(Identity, From, State);
 
 %% When the client is crashed we should not exit 
-%% and we should let the implementaion of type to deal with this
+%% and we should let the implementation of type to deal with this
 handle_info({'EXIT', PeerPid, _Other}, State) ->
     exit_peer(PeerPid, State);
 

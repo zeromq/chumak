@@ -15,13 +15,13 @@
 %%
 %% If the CHUMAK_CURVE_LIB environment variable is _not_ set,
 %% nacerl will be used. On Windows an additional check will be 
-%% preformed first: if gcc and make are not available, `none` will
+%% performed first: if gcc and make are not available, `none` will
 %% be assumed. 
 %% 
 %% Since it is not possible to reliably and completely build any of
 %% the options that depend on libsodium from rebar3, only in the `nacerl` 
 %% case the library will be fetched and built automatically as a 
-%% dependency. In the other cases you wil have to make the library available
+%% dependency. In the other cases you will have to make the library available
 %% via other means.
 %%
 %% The selected option ("nacl", "enacl", "nacerl" or "none") will be 
