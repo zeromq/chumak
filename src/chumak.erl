@@ -90,7 +90,7 @@ socket(Type)
 %%   <dd>- Provide public keys of authorised clients</dd>
 %%   <dd>- type: list of string() or integer() , or 'any'</dd>
 %%   <dd>Determines which clients are authorised to connect to the server. You
-%%   may set this on CURVE server sockets. If it is not set explictly, if
+%%   may set this on CURVE server sockets. If it is not set explicitly, if
 %%   defaults to 'any', which means that all clients have access (provided that
 %%   they know the CURVE secret key). If a list of keys is provided, only
 %%   clients with those public keys can connect to the server. You can provide

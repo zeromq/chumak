@@ -22,7 +22,7 @@ normal_test_() ->
        {setup, fun start/0, fun stop/1, fun negotiate_subcriptions_with_matching/1}
      }
      , {
-       "Should resend subscriptions when reconnection ocurred",
+       "Should resend subscriptions when reconnection occurred",
        {setup, fun start/0, fun stop/1, fun negotiate_subcriptions_with_reconnect/1}
      }
      , {

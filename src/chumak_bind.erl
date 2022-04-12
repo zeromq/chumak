@@ -46,7 +46,7 @@ listener(ListenSocket, ParentPid) ->
         {ok, Socket} = gen_tcp:accept(ListenSocket),
         {ok, PeerPid} = gen_server:call(ParentPid, {accept, Socket}), %% get peer's pid of chumak_peer
         ok = gen_tcp:controlling_process(Socket, PeerPid), %% set controlling of new socket to chumak_peer
-        %% Start to negociate greetings after new process is owner
+        %% Start to negotiate greetings after new process is owner
         gen_server:cast(PeerPid, negotiate_greetings),
         listener(ListenSocket, ParentPid)
     catch
