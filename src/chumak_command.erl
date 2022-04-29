@@ -136,7 +136,7 @@ encode_ready(SocketType, Identity, Resource, Metadata) when is_atom(SocketType) 
 error_reason(#error{reason=Reason}) ->
     Reason.
 
-%% @doc returns an encoded errorr command
+%% @doc returns an encoded error command
 -spec encode_error(Reason::string()) -> Data::binary().
 encode_error(Reason) when is_list(Reason) ->
     ReasonBin = list_to_binary(Reason),
