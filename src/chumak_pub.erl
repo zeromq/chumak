@@ -126,7 +126,7 @@ queue_ready(#chumak_pub{xpub=true}=State, _Identity, PeerPid) ->
         empty ->
             {noreply,State};
         {error,Info}->
-            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_pub,Info]),
+            logger:warning("can't get message out in ~p with reason: ~p~n",[chumak_pub,Info]),
             {noreply,State}
     end;
 

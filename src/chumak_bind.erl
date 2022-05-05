@@ -19,7 +19,7 @@ start_link(Host, Port) ->
                     Pid = spawn_link(?MODULE, listener, [ListenSocket, ParentPid]),
                     {ok, Pid};
                 {error, Reason} ->
-                    error_logger:error_report([
+                    logger:error([
                                                bind_error,
                                                {host, Host},
                                                {addr, Addr},
@@ -31,7 +31,7 @@ start_link(Host, Port) ->
             end;
 
         {error, IpReason} ->
-            error_logger:error_report([
+            logger:error([
                                        bind_error,
                                        {host, Host},
                                        getaddr_error,
@@ -51,9 +51,9 @@ listener(ListenSocket, ParentPid) ->
         listener(ListenSocket, ParentPid)
     catch
         error:{badmatch, {error, closed}} ->
-            error_logger:info_report({bind_closed});
+            logger:info({bind_closed});
         error:{badmatch, Error} ->
-            error_logger:error_report([
+            logger:error([
                                        accept_error,
                                        {error, Error}
                                       ]),

@@ -128,7 +128,7 @@ queue_ready(State, _Identity, PeerPid) ->
         empty ->
             {noreply,State};
         {error,Info}->
-            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_sub,Info]),
+            logger:warning("cannot process sub message because: ~p~n",[Info]),
             {noreply,State}
     end.
 
@@ -169,7 +169,7 @@ handle_queue_ready(#chumak_sub{recv_queue=RecvQueue, pending_recv=nil}=State,Dat
     NewRecvQueue = queue:in(Data, RecvQueue),
     State#chumak_sub{recv_queue=NewRecvQueue};
 
-handle_queue_ready(#chumak_sub{pending_recv={from, PendingRecv}, 
+handle_queue_ready(#chumak_sub{pending_recv={from, PendingRecv},
         pending_recv_multipart=IsPendingMultipart} = State, Data)->
     case IsPendingMultipart of
         true ->

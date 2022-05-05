@@ -65,7 +65,7 @@ accept_peer(#chumak_pair{pair_pid=nil}=State, PeerPid) ->
     {reply, {ok, PeerPid}, State#chumak_pair{pair_pid=PeerPid}};
 
 accept_peer(State, PeerPid) ->
-    error_logger:info_msg("Deny remote peer, this peer already paired"),
+    logger:warning("Deny remote peer, this peer already paired"),
     chumak_peer:send_error(PeerPid, "This peer is already paired"),
     chumak_peer:close(PeerPid),
     {reply, {error, peer_already_paired}, State}.

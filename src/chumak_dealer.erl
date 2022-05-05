@@ -24,7 +24,7 @@
           state=idle        :: idle | wait_req
          }).
 
--define(RETRIES, 20).
+% -define(RETRIES, 20).
 
 valid_peer_type(rep)    -> valid;
 valid_peer_type(router) -> valid;
@@ -74,7 +74,7 @@ recv_multipart(#chumak_dealer{state=idle, lb=LB}=State, From) ->
         none ->
             {noreply, State#chumak_dealer{state=wait_req, pending_recv={from, From}}};
         {NewLB, PeerPid} ->
-            direct_recv_multipart(State#chumak_dealer{lb=NewLB}, PeerPid, PeerPid, From, ?RETRIES)
+            direct_recv_multipart(State#chumak_dealer{lb=NewLB}, PeerPid, PeerPid, From)
     end;
 recv_multipart(State, _From) ->
     {reply, {error, efsm}, State}.
@@ -92,7 +92,7 @@ unblock(#chumak_dealer{state=idle}=State, _From) ->
     {reply, ok, State}.
 
 queue_ready(#chumak_dealer{state=wait_req, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
-    FutureState = 
+    FutureState =
         case chumak_peer:incoming_queue_out(PeerPid) of
             {out, Messages} ->
                 gen_server:reply(PendingRecv, {ok, Messages}),
@@ -101,7 +101,7 @@ queue_ready(#chumak_dealer{state=wait_req, pending_recv={from, PendingRecv}}=Sta
                 gen_server:reply(PendingRecv, {error, queue_empty}),
                 State#chumak_dealer{state=idle, pending_recv=none};
             {error,Info}->
-                error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_dealer,Info]),
+                logger:warning("cannot process dealer message because: ~p~n",[Info]),
                 State
         end,
     {noreply, FutureState};
@@ -114,20 +114,19 @@ peer_disconected(#chumak_dealer{lb=LB}=State, PeerPid) ->
     {noreply, State#chumak_dealer{lb=NewLB}}.
 
 %% implement direct recv from peer queues
-direct_recv_multipart(#chumak_dealer{lb=LB}=State, FirstPeerPid, PeerPid, From, Retries) ->
+direct_recv_multipart(#chumak_dealer{lb=LB}=State, FirstPeerPid, PeerPid, From) ->
     case chumak_peer:incoming_queue_out(PeerPid) of
         {out, Messages} ->
             {reply, {ok, Messages}, State};
 
-        {error, {timeout, _}} when Retries > 0 ->
-            io:format("chumak_dealer:direct_recv_multipart/5 timed out, retrying ~p more times~n", [Retries]),
-            direct_recv_multipart(State, FirstPeerPid, PeerPid, From, Retries - 1);
+        {error, {timeout, _}} ->
+          {reply, {error, timeout}, State};
 
         empty ->
             case chumak_lb:get(LB) of
                 {NewLB, FirstPeerPid} ->
                     {noreply, State#chumak_dealer{state=wait_req, pending_recv={from, From}, lb=NewLB}};
                 {NewLB, OtherPeerPid} ->
-                    direct_recv_multipart(State#chumak_dealer{lb=NewLB}, FirstPeerPid, OtherPeerPid, From, Retries)
+                    direct_recv_multipart(State#chumak_dealer{lb=NewLB}, FirstPeerPid, OtherPeerPid, From)
             end
     end.

@@ -130,7 +130,7 @@ peer_recv_message(#chumak_req{state=wait_reply, last_peer_sent=From}=State, Mess
         <<>> ->
             {noreply, State#chumak_req{state=wait_more_msg}};
         Frame ->
-            error_logger:warning_report({
+            logger:warning({
                                           invalid_delimiter_frame,
                                           {pattern, req},
                                           {obtained_frame, Frame},
@@ -160,7 +160,7 @@ peer_recv_message(#chumak_req{state=wait_more_msg, last_peer_sent=From}=State, M
     end;
 
 peer_recv_message(#chumak_req{last_peer_sent=LastPeer, state=S}=State, Message, From) ->
-    error_logger:info_report({
+    logger:info({
                                discard_message,
                                {last_peer_sent, LastPeer},
                                {peer_sent, From},

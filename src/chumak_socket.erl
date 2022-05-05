@@ -36,7 +36,7 @@ stop(Pid) ->
 
 %% gen_server implementation
 init({Type, Identity}) ->
-    process_flag(trap_exit, true), %% trap exit 
+    process_flag(trap_exit, true), %% trap exit
     case chumak_pattern:module(Type) of
         {error, Reason} ->
             {stop, Reason};
@@ -101,7 +101,7 @@ handle_cast({peer_reconnected, From}, State) ->
     pattern_support(State, peer_reconnected, [From], nowarn);
 
 handle_cast(CastMsg, State) ->
-    error_logger:info_report([
+    logger:warning([
                               unhandled_handle_cast,
                               {module, ?MODULE},
                               {msg, CastMsg}
@@ -114,13 +114,13 @@ handle_info({peer_recv_message, Message, From}, State) ->
 handle_info({queue_ready, Identity, From}, State) ->
     queue_ready(Identity, From, State);
 
-%% When the client is crashed we should not exit 
+%% When the client is crashed we should not exit
 %% and we should let the implementation of type to deal with this
 handle_info({'EXIT', PeerPid, _Other}, State) ->
     exit_peer(PeerPid, State);
 
 handle_info(InfoMsg, State) ->
-    error_logger:info_report([
+    logger:warning([
                               unhandled_handle_info,
                               {module, ?MODULE},
                               {msg, InfoMsg}
@@ -137,17 +137,17 @@ terminate(Reason, #state{socket=Mod, socket_state=S}) ->
 store({reply, M, S}, State) -> {reply, M, State#state{socket_state=S}};
 store({noreply, S}, State) -> {noreply, State#state{socket_state=S}}.
 
-set_option(Name, Value, #state{socket_options = Options} = State) 
+set_option(Name, Value, #state{socket_options = Options} = State)
   when Name =:= curve_server, is_boolean(Value);
        Name =:= curve_publickey, is_binary(Value);
        Name =:= curve_secretkey, is_binary(Value);
        Name =:= curve_serverkey, is_binary(Value) ->
     {reply, ok, State#state{socket_options = Options#{Name => Value}}};
-set_option(Name, Value, #state{socket_options = Options} = State) 
+set_option(Name, Value, #state{socket_options = Options} = State)
   when Name =:= curve_clientkeys ->
     case validate_keys(Value) of
         {ok, BinaryKeys} ->
-            {reply, ok, 
+            {reply, ok,
              State#state{socket_options = Options#{Name => BinaryKeys}}};
         {error, _Error} ->
             {reply, {error, einval}, State}
@@ -190,7 +190,7 @@ send_multipart(Multipart, From, #state{socket=S, socket_state=T}=State) ->
     store(Reply, State).
 
 recv_multipart(From, #state{socket=S, socket_state=T}=State) ->
-    Reply = S:recv_multipart(T, From), 
+    Reply = S:recv_multipart(T, From),
     store(Reply, State).
 
 unblock(From, #state{socket=S, socket_state=T}=State) ->
@@ -203,19 +203,19 @@ get_flags(State) ->
 peer_ready(From, Identity, #state{socket=S, socket_state=T}=State) ->
     Reply = S:peer_ready(T, From, Identity),
     store(Reply, State).
- 
+
 pattern_support(State, Function, Args) ->
     pattern_support(State, Function, Args, warn).
 %% check the implementation support function or not
 pattern_support(#state{socket=S, socket_state=T}=State, Function, Args, Alert) ->
-    IsExported = erlang:function_exported(S, Function, length(Args) + 1), 
+    IsExported = erlang:function_exported(S, Function, length(Args) + 1),
 
     case {IsExported, Alert} of
         {true, _} ->
-            store(apply(S, Function, [T] ++ Args), State); %% call function and store new state 
+            store(apply(S, Function, [T] ++ Args), State); %% call function and store new state
 
         {false, warn} ->
-            error_logger:warning_report([
+            logger:warning([
                                          pattern_not_supported,
                                          {module, S},
                                          {method, Function},
@@ -239,7 +239,7 @@ exit_peer(PeerPid, #state{socket=S,  socket_state=T}=State) ->
     Reply = S:peer_disconected(T, PeerPid),
     store(Reply, State).
 
-peer_flags(#state{socket=Socket, 
+peer_flags(#state{socket=Socket,
                   socket_state=SocketState,
                   socket_options=SocketOptions}) ->
     {SocketType, PeerOpts} = Socket:peer_flags(SocketState),

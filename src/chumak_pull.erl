@@ -118,7 +118,7 @@ queue_ready(State, _Identity, PeerPid) ->
         empty ->
             {noreply,State};
         {error,Info}->
-            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_pull,Info]),
+            logger:warning("can't get message out in ~p with reason: ~p~n",[chumak_pull,Info]),
             {noreply,State}
     end.
 
@@ -135,7 +135,7 @@ handle_queue_ready(#chumak_pull{pending_recv={from, PendingRecv}, pending_recv_m
     gen_server:reply(PendingRecv, {ok, Msg}),
     State#chumak_pull{pending_recv=nil};
 
-%% when pending recv_multipart    
+%% when pending recv_multipart
 handle_queue_ready(#chumak_pull{pending_recv=nil, pending_recv_multipart={from, PendingRecv}}=State, Data)->
     gen_server:reply(PendingRecv, {ok, Data}),
     State#chumak_pull{pending_recv_multipart=nil}.

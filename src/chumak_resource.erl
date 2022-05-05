@@ -83,7 +83,7 @@ handle_cast({detach, Resource}, #state{resources=Resources, monitors=Monitors}=S
     end;
 
 handle_cast(CastMsg, State) ->
-    error_logger:info_report([
+    logger:info([
                               unhandled_handle_cast,
                               {module, ?MODULE},
                               {msg, CastMsg}
@@ -103,7 +103,7 @@ handle_info({'EXIT', _Pid, {shutdown, invalid_resource}}, State) ->
     {noreply, State};
 
 handle_info(InfoMsg, State) ->
-    error_logger:info_report([
+    logger:info([
                               unhandled_handle_info,
                               {module, ?MODULE},
                               {msg, InfoMsg}
