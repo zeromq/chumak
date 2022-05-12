@@ -7,6 +7,7 @@
 
 -module(chumak_resource).
 -behaviour(gen_server).
+-include_lib("kernel/include/logger.hrl").
 
 %% api behaviour
 -export([start_link/0]).
@@ -83,11 +84,7 @@ handle_cast({detach, Resource}, #state{resources=Resources, monitors=Monitors}=S
     end;
 
 handle_cast(CastMsg, State) ->
-    logger:info([
-                              unhandled_handle_cast,
-                              {module, ?MODULE},
-                              {msg, CastMsg}
-                             ]),
+    ?LOG_INFO("zmq system error", #{error => unhandled_handle_cast, args => CastMsg }),
     {noreply, State}.
 
 handle_info({'DOWN', MonRef, process, SocketPid, _}, #state{resources=Resources, monitors=Monitors}=State) ->
@@ -103,11 +100,7 @@ handle_info({'EXIT', _Pid, {shutdown, invalid_resource}}, State) ->
     {noreply, State};
 
 handle_info(InfoMsg, State) ->
-    logger:info([
-                              unhandled_handle_info,
-                              {module, ?MODULE},
-                              {msg, InfoMsg}
-                             ]),
+    ?LOG_INFO("zmq system error", #{error => unhandled_handle_info, args => InfoMsg}),
     {noreply, State}.
 
 terminate(_Reason, _State) ->

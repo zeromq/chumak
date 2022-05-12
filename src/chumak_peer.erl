@@ -140,7 +140,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% @hidden
 handle_call(incoming_queue_out, _From, #state{incoming_queue=nil}=State) ->
-    logger:error([ incoming_queue_out, {error, incoming_queue_not_enabled} ]),
+    ?LOG_ERROR("zmq queue error", #{error => incoming_queue_not_enabled, queue => incoming_queue_out, type => peer}),
     {reply, {error, incoming_queue_not_enabled}, State};
 handle_call(incoming_queue_out, _From, #state{incoming_queue=IncomingQueue}=State) ->
     case queue:out(IncomingQueue) of
@@ -224,7 +224,7 @@ handle_info({tcp_closed, _Port}, State) ->
     try_connect(State);
 
 handle_info(InfoMessage, State) ->
-    logger:warning([ unhandled_handle_info, {msg, InfoMessage} ]),
+    ?LOG_WARNING("zmq system error", #{error => unhandled_handle_info, reason => InfoMessage}),
     {noreply, State}.
 
 
@@ -241,7 +241,7 @@ send_data(Data, #state{socket = Socket} = State) ->
         ok ->
             ok;
         {error, Reason}->
-            logger:error([ send_error, {error, Reason} ])
+            ?LOG_ERROR("zmq send error", #{error => send_error, reason => Reason})
     end,
     {noreply, State}.
 
@@ -263,7 +263,7 @@ try_connect(#state{host=Host, port=Port, parent_pid=ParentPid,
             negotiate_greetings(NewState);
 
         {error, Reason} ->
-            logger:error("connection failed", #{host => Host, port => Port, reason => Reason}),
+            ?LOG_ERROR("zmq connection failed", #{error => connection_failed, host => Host, port => Port, reason => Reason}),
             timer:sleep(?RECONNECT_TIMEOUT),
             try_connect(State)
     end.
@@ -282,8 +282,11 @@ negotiate_greetings(#state{socket=Socket,
         {ready, NewDecoder} = chumak_protocol:decode(State#state.decoder, GreetingFrame),
         verify_mechanism(State, NewDecoder)
     catch
+        error:{badmatch, {error, Reason}} ->
+            ?LOG_ERROR("zmq handshake error", #{error => negotiate_error, reason => Reason}),
+            {stop, {error, Reason}, State};
         error:{badmatch, Error} ->
-            logger:error([ negotiate_greetings_error, {error, Error} ]),
+            ?LOG_ERROR("zmq handshake error", #{error => negotiate_error, reason => Error}),
             {stop, Error, State}
     end.
 
@@ -293,7 +296,7 @@ verify_mechanism(#state{mechanism = Mechanism} = State, Decoder) ->
             verify_role(State, Decoder);
         _ ->
             MismatchError = {server_error, "Security mechanism mismatch"},
-            logger:error([ negotiate_greetings_error, {error, MismatchError} ]),
+            ?LOG_ERROR("zmq handshake error", #{error => negotiate_error, reason => MismatchError}),
             {stop, {shutdown, MismatchError}, State}
     end.
 
@@ -305,10 +308,8 @@ verify_role(#state{mechanism = curve,
         %% %% Each peer must have it's own role
         %% AsServer ->
             %% MismatchError = {server_error, "Role (as-server) mismatch"},
-            %% logger:error([
-                                       %% negotiate_greetings_error,
-                                       %% {error, MismatchError}
-                                      %% ]),
+            %% ?LOG_ERROR("zmq handshake error", #{error => negotiate_error,
+            %%                       reason => MismatchError}]),
             %% {stop, {shutdown, MismatchError}, State};
         _ ->
             do_handshake(State, Decoder)
@@ -403,7 +404,7 @@ handle_handshake_data(State,
                       {error, {invalid_command_before_ready, _Name}} = Error) ->
     {error, Error, State};
 handle_handshake_data(State, {error, Reason}) ->
-    logger:error([server_error, {msg, Reason}]),
+    ?LOG_ERROR("zmq handshake error", #{error => server_error, reason => Reason}),
     {error, {shutdown, {server_error, Reason}}, State};
 handle_handshake_data(#state{multi_socket_type=true,
                              parent_pid = ResourceRouterPid} = State,
@@ -514,7 +515,7 @@ process_decoder_reply(State, Reply) ->
         {ok, Decoder, Commands} ->
             receive_commands(State, Decoder, Commands);
         {error, Reason} ->
-            logger:error([ decode_fail, {reason, Reason} ]),
+            ?LOG_ERROR("zmq decode error", #{error => decode_fail, reason => Reason}),
             {stop, decode_error, State}
     end.
 
@@ -549,7 +550,7 @@ receive_commands(#state{step=ready, parent_pid=ParentPid}=State, NewDecoder, [Co
             receive_commands(State, NewDecoder, Commands);
 
         error ->
-            logger:error([ socket_error, {reason, chumak_command:error_reason(Command)} ]),
+            ?LOG_ERROR("zmq receive error", #{error => socket_error, reason => chumak_command:error_reason(Command)}),
             {stop, {shutdown, peer_error}, State};
 
         Name ->
@@ -574,7 +575,7 @@ send_error_to_socket(Socket, ReasonMsg) ->
         ok ->
             ok;
         {error, Reason} ->
-            logger:error("Error sending to socket\n", #{reason => Reason})
+            ?LOG_ERROR("zmq send error", #{error => send_error, reason => Reason})
     end.
 
 send_command_to_socket(Socket, Command) ->

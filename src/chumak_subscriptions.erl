@@ -5,6 +5,8 @@
 %% @doc ZeroMQ Subscription manager
 
 -module(chumak_subscriptions).
+-include_lib("kernel/include/logger.hrl").
+
 -export([new/0, put/3, delete/2, delete/3, match/2]).
 
 

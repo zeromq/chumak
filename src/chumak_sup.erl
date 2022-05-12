@@ -33,7 +33,7 @@ start_socket(Type, Identity) ->
                              start=>{?SOCKET, start_link, [Type, Identity]}
                             }) of
         {error, already_present} ->
-            supervisor:restart_child(?MODULE, ProcessId); 
+            supervisor:restart_child(?MODULE, ProcessId);
         Res ->
             Res
     end.

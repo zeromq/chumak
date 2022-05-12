@@ -19,24 +19,12 @@ start_link(Host, Port) ->
                     Pid = spawn_link(?MODULE, listener, [ListenSocket, ParentPid]),
                     {ok, Pid};
                 {error, Reason} ->
-                    logger:error([
-                                               bind_error,
-                                               {host, Host},
-                                               {addr, Addr},
-                                               {port, Port},
-                                               listen_error,
-                                               {error, Reason}
-                                              ]),
+                    ?LOG_ERROR("zmq listen error", #{error => listen_error, host => Host, addr => Addr, port => Port, reason => Reason}),
                     {error, Reason}
             end;
 
         {error, IpReason} ->
-            logger:error([
-                                       bind_error,
-                                       {host, Host},
-                                       getaddr_error,
-                                       {error, IpReason}
-                                      ]),
+            ?LOG_ERROR("zmq listen error", #{error => getaddr_error, host => Host, reason => IpReason}),
             {error, IpReason}
     end.
 
@@ -51,12 +39,12 @@ listener(ListenSocket, ParentPid) ->
         listener(ListenSocket, ParentPid)
     catch
         error:{badmatch, {error, closed}} ->
-            logger:info({bind_closed});
+            ?LOG_INFO("zmq listener error", #{error => bind_closed});
+        error:{badmatch, {error, Reason}} ->
+            ?LOG_ERROR("zmq listener error", #{error => accept_error, reason => Reason }),
+            listener(ListenSocket, ParentPid);
         error:{badmatch, Error} ->
-            logger:error([
-                                       accept_error,
-                                       {error, Error}
-                                      ]),
+            ?LOG_ERROR("zmq listener error", #{error => accept_error, reason => Error }),
             listener(ListenSocket, ParentPid)
     end.
 

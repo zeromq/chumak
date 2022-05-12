@@ -10,6 +10,7 @@
 
 -module(chumak_dealer).
 -behaviour(chumak_pattern).
+-include_lib("kernel/include/logger.hrl").
 
 -export([valid_peer_type/1, init/1, terminate/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
@@ -76,6 +77,7 @@ recv_multipart(#chumak_dealer{state=idle, lb=LB}=State, From) ->
         {NewLB, PeerPid} ->
             direct_recv_multipart(State#chumak_dealer{lb=NewLB}, PeerPid, PeerPid, From)
     end;
+
 recv_multipart(State, _From) ->
     {reply, {error, efsm}, State}.
 
@@ -101,7 +103,7 @@ queue_ready(#chumak_dealer{state=wait_req, pending_recv={from, PendingRecv}}=Sta
                 gen_server:reply(PendingRecv, {error, queue_empty}),
                 State#chumak_dealer{state=idle, pending_recv=none};
             {error,Info}->
-                logger:warning("cannot process dealer message because: ~p~n",[Info]),
+                ?LOG_WARNING("zmq queue error", #{error => cannot_process, reason => Info}),
                 State
         end,
     {noreply, FutureState};
