@@ -10,8 +10,8 @@
 -module(chumak_curve).
 -include("chumak.hrl").
 
-%% To become a CURVE server, the application sets the ZMQ_CURVE_SERVER 
-%% option on the socket, and then sets the ZMQ_CURVE_SECRETKEY option 
+%% To become a CURVE server, the application sets the ZMQ_CURVE_SERVER
+%% option on the socket, and then sets the ZMQ_CURVE_SECRETKEY option
 %% to provide the socket with its long-term secret key. The application does
 %% not provide the socket with its long-term public key, which is used only by
 %% clients.
@@ -29,13 +29,13 @@
         curve_secretkey => binary(),  %% available for both roles, client or server
         curve_serverkey => binary(),  %% client needs sever public key.
         client_nonce => integer(),    %% both sides have a nonce
-        server_nonce => integer(),    
+        server_nonce => integer(),
         client_public_transient_key => binary(),
         client_secret_transient_key => binary(),
         server_public_transient_key => binary(),
         server_secret_transient_key => binary(),
         cookie_public_key => binary(),
-        cookie_secret_key => binary()}.  
+        cookie_secret_key => binary()}.
 
 -export_type([curve_data/0]).
 
@@ -52,8 +52,8 @@
 -spec security_handshake(Socket::gen_tcp:socket(),
                          Decoder::chumak_protocol:decoder(),
                          AsServer::boolean(),
-                         Metadata::term()) -> 
-    {chumak_protocol:decoder(), {ok, chumak_peer:handshake_data()} | 
+                         Metadata::term()) ->
+    {chumak_protocol:decoder(), {ok, chumak_peer:handshake_data()} |
                                 {error, term()}}.
 
 security_handshake(Socket, Decoder, false, Metadata) ->
@@ -62,16 +62,16 @@ security_handshake(Socket, Decoder, false, Metadata) ->
         CurveData = chumak_protocol:decoder_security_data(Decoder),
         {ok, CurveData2} = validate_client_curve_data(CurveData),
         {ok, CurveData3} = send_hello_step(Socket, CurveData2),
-        Decoder2 = chumak_protocol:set_decoder_security_data(Decoder, 
+        Decoder2 = chumak_protocol:set_decoder_security_data(Decoder,
                                                              CurveData3),
-        %% Receive the Welcome Frame. 
+        %% Receive the Welcome Frame.
         %% Length is 2 bytes command-size + 168 bytes payload = 170 bytes.
         {ok, WelcomeFrame} = gen_tcp:recv(Socket, 170, ?GREETINGS_TIMEOUT),
-        {ok, Decoder3, [_Welcome]} = chumak_protocol:decode(Decoder2, 
+        {ok, Decoder3, [_Welcome]} = chumak_protocol:decode(Decoder2,
                                                             WelcomeFrame),
         CurveData4 = chumak_protocol:decoder_security_data(Decoder3),
         {ok, CurveData5} = send_initiate_step(Socket, CurveData4, Metadata),
-        Decoder4 = chumak_protocol:set_decoder_security_data(Decoder, 
+        Decoder4 = chumak_protocol:set_decoder_security_data(Decoder,
                                                              CurveData5),
         {ok, ReadyFrame} = receive_command(Socket),
         {ok, Decoder5, [Ready]} = chumak_protocol:decode(Decoder4, ReadyFrame),
@@ -79,11 +79,11 @@ security_handshake(Socket, Decoder, false, Metadata) ->
         CurveData6 = chumak_protocol:decoder_security_data(Decoder5),
         {Decoder5, {ready, MetaData#{security_data => CurveData6}}}
     catch
+        error:{badmatch, {error, Reason}} ->
+            ?LOG_ERROR("zmq handshake error", #{error => negotiate_error, reason => Reason}),
+            {Decoder, {error, Reason}};
         error:{badmatch, Error} ->
-            error_logger:error_report([
-                                       negotiate_greetings_error,
-                                       {error, Error}
-                                      ]),
+            ?LOG_ERROR("zmq handshake error", #{error => negotiate_error, reason => Error}),
             {Decoder, {error, Error}}
     end;
 security_handshake(Socket, Decoder, true, Metadata) ->
@@ -92,7 +92,7 @@ security_handshake(Socket, Decoder, true, Metadata) ->
         CurveData = chumak_protocol:decoder_security_data(Decoder),
         {ok, #{curve_clientkeys := AllowedClients} = CurveData2} =
             validate_server_curve_data(CurveData),
-        Decoder2 = chumak_protocol:set_decoder_security_data(Decoder, 
+        Decoder2 = chumak_protocol:set_decoder_security_data(Decoder,
                                                              CurveData2),
 
         %% The HELLO Frame is a "normal" command, so the command length is
@@ -104,11 +104,11 @@ security_handshake(Socket, Decoder, true, Metadata) ->
 
         %% Send WELCOME
         {ok, CurveData4} = send_welcome_step(Socket, CurveData3),
-        Decoder4 = chumak_protocol:set_decoder_security_data(Decoder3, 
+        Decoder4 = chumak_protocol:set_decoder_security_data(Decoder3,
                                                              CurveData4),
         %% Receive INITIATE
         {ok, InitiateFrame} = receive_command(Socket),
-        {ok, Decoder5, [Initiate]} = chumak_protocol:decode(Decoder4, 
+        {ok, Decoder5, [Initiate]} = chumak_protocol:decode(Decoder4,
                                                             InitiateFrame),
 
         %% If required, authenticate the client.
@@ -126,15 +126,15 @@ security_handshake(Socket, Decoder, true, Metadata) ->
 
         %% Send READY
         {ok, CurveData6} = send_ready_step(Socket, CurveData5, Metadata),
-        Decoder6 = chumak_protocol:set_decoder_security_data(Decoder5, 
+        Decoder6 = chumak_protocol:set_decoder_security_data(Decoder5,
                                                              CurveData6),
         {Decoder6, {ready, MetaData#{security_data => CurveData6}}}
     catch
+        error:{badmatch, {error, Reason}} ->
+            ?LOG_ERROR("zmq handshake error", #{error => negotiate_error, reason => Reason}),
+            {Decoder, {error, Reason}};
         error:{badmatch, Error} ->
-            error_logger:error_report([
-                                       negotiate_greetings_error,
-                                       {error, Error}
-                                      ]),
+            ?LOG_ERROR("zmq handshake error", #{error => negotiate_error, reason => Error}),
             {Decoder, {error, Error}}
     end.
 
@@ -153,7 +153,7 @@ receive_command(Socket) ->
     end.
 
 %% The HELLO Command
-%% 
+%%
 %% The first command on a CurveZMQ connection is the HELLO command. The client
 %% SHALL send a HELLO command after opening the stream connection. This command
 %%
@@ -228,7 +228,7 @@ send_welcome_step(Socket, CurveData) ->
 
 
 send_initiate_step(Socket, CurveData, Metadata) ->
-    {Initiate, NewCurveData} = 
+    {Initiate, NewCurveData} =
         chumak_protocol:build_initiate_frame(Metadata, CurveData),
     case gen_tcp:send(Socket, Initiate) of
         ok ->
@@ -238,7 +238,7 @@ send_initiate_step(Socket, CurveData, Metadata) ->
     end.
 
 send_ready_step(Socket, CurveData, Metadata) ->
-    {Ready, NewCurveData} = chumak_protocol:build_ready_frame(Metadata, 
+    {Ready, NewCurveData} = chumak_protocol:build_ready_frame(Metadata,
                                                               CurveData),
     case gen_tcp:send(Socket, Ready) of
         ok ->
@@ -251,7 +251,7 @@ send_ready_step(Socket, CurveData, Metadata) ->
 validate_client_curve_data(CurveData) when is_map(CurveData) ->
     true = is_binary(maps:get(curve_serverkey, CurveData, undefined)),
     #{public := PK, secret := SK} = chumak_curve_if:box_keypair(),
-    {ok, CurveData#{mechanism => curve, 
+    {ok, CurveData#{mechanism => curve,
                     role => client,
                     client_secret_transient_key => SK,
                     client_public_transient_key => PK,
@@ -263,7 +263,7 @@ validate_server_curve_data(CurveData) when is_map(CurveData) ->
     ClientKeys = maps:get(curve_clientkeys, CurveData, any),
     #{public := PK, secret := SK} = chumak_curve_if:box_keypair(),
     #{public := Cookie_PK, secret := Cookie_SK} = chumak_curve_if:box_keypair(),
-    {ok, CurveData#{mechanism => curve, 
+    {ok, CurveData#{mechanism => curve,
                     curve_clientkeys => ClientKeys,
                     role => server,
                     server_secret_transient_key => SK,

@@ -9,6 +9,7 @@
 
 -module(chumak_rep).
 -behaviour(chumak_pattern).
+-include_lib("kernel/include/logger.hrl").
 
 -export([valid_peer_type/1, init/1, terminate/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
@@ -139,17 +140,12 @@ recv_from_peer(PeerPid) ->
         empty ->
             empty;
         {error,Info}->
-            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_rep,Info]),
+            ?LOG_WARNING("zmq send error", #{error => send_error, reason => Info}),
             empty
     end.
 
 decode_messages([<<>>|Tail])->
     {ok, binary:list_to_bin(Tail)};
 decode_messages([Delimiter|_Tail]) ->
-    error_logger:warning_report({
-                                  invalid_delimiter_frame,
-                                  {pattern, rep},
-                                  {obtained_frame, Delimiter},
-                                  {expected_frame, <<>>}
-                                }),
+    ?LOG_WARNING("zmq decode error", #{error => invalid_delimiter_frame, pattern => rep, obtained_frame => Delimiter, expected_frame => <<>> }),
     {error, invalid_delimiter_frame}.

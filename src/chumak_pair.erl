@@ -9,6 +9,7 @@
 
 -module(chumak_pair).
 -behaviour(chumak_pattern).
+-include_lib("kernel/include/logger.hrl").
 
 -export([valid_peer_type/1, init/1, terminate/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
@@ -65,7 +66,7 @@ accept_peer(#chumak_pair{pair_pid=nil}=State, PeerPid) ->
     {reply, {ok, PeerPid}, State#chumak_pair{pair_pid=PeerPid}};
 
 accept_peer(State, PeerPid) ->
-    error_logger:info_msg("Deny remote peer, this peer already paired"),
+    ?LOG_WARNING("zmq connect deny", #{error => already_paired}),
     chumak_peer:send_error(PeerPid, "This peer is already paired"),
     chumak_peer:close(PeerPid),
     {reply, {error, peer_already_paired}, State}.

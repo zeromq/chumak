@@ -5,6 +5,7 @@
 %% @doc Erlang common types for all modules
 
 -export_type([transport/0, socket_type/0]).
+-include_lib("kernel/include/logger.hrl").
 
 -type transport() :: tcp.
 -type socket_type() :: req | rep |
@@ -21,7 +22,7 @@
                           curve_secretkey  | %% binary()
                           curve_serverkey  | %% binary()
                           curve_clientkeys.  %% [binary() | z85_key()]
-                          
+
 -type security_mechanism() :: null |
                               curve.
 

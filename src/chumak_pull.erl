@@ -9,6 +9,7 @@
 
 -module(chumak_pull).
 -behaviour(chumak_pattern).
+-include_lib("kernel/include/logger.hrl").
 
 -export([valid_peer_type/1, init/1, terminate/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
@@ -118,7 +119,7 @@ queue_ready(State, _Identity, PeerPid) ->
         empty ->
             {noreply,State};
         {error,Info}->
-            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_pull,Info]),
+            ?LOG_WARNING("zmq queue error", #{error => send_error, reason => Info}),
             {noreply,State}
     end.
 
@@ -135,7 +136,7 @@ handle_queue_ready(#chumak_pull{pending_recv={from, PendingRecv}, pending_recv_m
     gen_server:reply(PendingRecv, {ok, Msg}),
     State#chumak_pull{pending_recv=nil};
 
-%% when pending recv_multipart    
+%% when pending recv_multipart
 handle_queue_ready(#chumak_pull{pending_recv=nil, pending_recv_multipart={from, PendingRecv}}=State, Data)->
     gen_server:reply(PendingRecv, {ok, Data}),
     State#chumak_pull{pending_recv_multipart=nil}.

@@ -9,6 +9,7 @@
 
 -module(chumak_router).
 -behaviour(chumak_pattern).
+-include_lib("kernel/include/logger.hrl").
 
 -export([valid_peer_type/1, init/1, terminate/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
@@ -106,7 +107,7 @@ queue_ready(State, Identity, PeerPid) ->
         empty ->
             {noreply,State};
         {error,Info}->
-            error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_router,Info]),
+            ?LOG_WARNING("zmq queue error", #{error => send_error, type => router, reason => Info}),
             {noreply,State}
     end.
 

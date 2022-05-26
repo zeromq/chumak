@@ -10,6 +10,7 @@
 
 -module(chumak_dealer).
 -behaviour(chumak_pattern).
+-include_lib("kernel/include/logger.hrl").
 
 -export([valid_peer_type/1, init/1, terminate/2, peer_flags/1, accept_peer/2, peer_ready/3,
          send/3, recv/2,
@@ -24,10 +25,13 @@
           state=idle        :: idle | wait_req
          }).
 
+% -define(RETRIES, 20).
+
 valid_peer_type(rep)    -> valid;
 valid_peer_type(router) -> valid;
 valid_peer_type(dealer) -> valid;
 valid_peer_type(_)      -> invalid.
+
 
 init(Identity) ->
     State = #chumak_dealer{
@@ -73,6 +77,7 @@ recv_multipart(#chumak_dealer{state=idle, lb=LB}=State, From) ->
         {NewLB, PeerPid} ->
             direct_recv_multipart(State#chumak_dealer{lb=NewLB}, PeerPid, PeerPid, From)
     end;
+
 recv_multipart(State, _From) ->
     {reply, {error, efsm}, State}.
 
@@ -89,7 +94,7 @@ unblock(#chumak_dealer{state=idle}=State, _From) ->
     {reply, ok, State}.
 
 queue_ready(#chumak_dealer{state=wait_req, pending_recv={from, PendingRecv}}=State, _Identity, PeerPid) ->
-    FutureState = 
+    FutureState =
         case chumak_peer:incoming_queue_out(PeerPid) of
             {out, Messages} ->
                 gen_server:reply(PendingRecv, {ok, Messages}),
@@ -98,7 +103,7 @@ queue_ready(#chumak_dealer{state=wait_req, pending_recv={from, PendingRecv}}=Sta
                 gen_server:reply(PendingRecv, {error, queue_empty}),
                 State#chumak_dealer{state=idle, pending_recv=none};
             {error,Info}->
-                error_logger:info_msg("can't get message out in ~p with reason: ~p~n",[chumak_dealer,Info]),
+                ?LOG_WARNING("zmq queue error", #{error => cannot_process, reason => Info}),
                 State
         end,
     {noreply, FutureState};
@@ -115,6 +120,9 @@ direct_recv_multipart(#chumak_dealer{lb=LB}=State, FirstPeerPid, PeerPid, From) 
     case chumak_peer:incoming_queue_out(PeerPid) of
         {out, Messages} ->
             {reply, {ok, Messages}, State};
+
+        {error, {timeout, _}} ->
+          {reply, {error, timeout}, State};
 
         empty ->
             case chumak_lb:get(LB) of
