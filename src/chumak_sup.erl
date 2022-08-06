@@ -34,6 +34,8 @@ start_socket(Type, Identity) ->
                             }) of
         {error, already_present} ->
             supervisor:restart_child(?MODULE, ProcessId);
+        {error, {already_started, Pid}} ->
+            {ok, Pid};
         Res ->
             Res
     end.
