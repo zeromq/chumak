@@ -9,3 +9,9 @@
 init_with_invalid_pattern_test() ->
     {stop, Reason} = chumak_socket:init({foo, "my-identity"}),
     ?assertEqual(Reason, invalid_socket_type).
+
+already_started_socket_test() ->
+    {ok, Pid1} = chumak:socket(dealer, "identity"),
+    {ok, Pid2} = chumak:socket(dealer, "identity"),
+    ?assertEqual(Pid1, Pid2),
+    ok.
