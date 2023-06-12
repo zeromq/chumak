@@ -40,7 +40,8 @@
           state=ready        :: req_state(),
           last_peer_sent=nil :: nil | pid(),
           pending_recv=nil   :: term(),
-          msg_buf=[]         :: list()
+          msg_buf=[]         :: list(),
+          is_multipart=false :: boolean()
 }).
 
 valid_peer_type(rep)    -> valid;
@@ -92,7 +93,7 @@ send(State, _Data, _From) ->
 
 %% send recv when is already waiting recv command
 recv(#chumak_req{state=wait_recv, msg_buf=Buffer}=State, _From) ->
-    FullMsg = binary:list_to_bin(Buffer), % TODO
+    FullMsg = binary:list_to_bin(Buffer),
     {reply, {ok, FullMsg}, State#chumak_req{state=ready, msg_buf=[]}};
 
 %% not allow recv in 'ready' state
@@ -103,10 +104,10 @@ recv(#chumak_req{state=ready}=State, _From) ->
 recv(#chumak_req{state=SocketState, pending_recv=PendingRecv}=State, From) ->
     case {SocketState, PendingRecv} of
         {wait_reply, nil} ->
-            {noreply, State#chumak_req{pending_recv=From}};
+            {noreply, State#chumak_req{pending_recv=From, is_multipart=false}};
 
         {wait_more_msg, nil} ->
-            {noreply, State#chumak_req{pending_recv=From}};
+            {noreply, State#chumak_req{pending_recv=From, is_multipart=false}};
 
         _ ->
             {reply, {error, efsm}, State}
@@ -130,9 +131,9 @@ send_multipart(State, _Multipart, _From) ->
 recv_multipart(#chumak_req{state=wait_recv, msg_buf=Buffer}=State, _From) ->
     {reply, {ok, Buffer}, State#chumak_req{state=ready, msg_buf=[]}};
 recv_multipart(#chumak_req{state=wait_reply, pending_recv=nil}=State, From) ->
-    {noreply, State#chumak_req{pending_recv=From}};
+    {noreply, State#chumak_req{pending_recv=From, is_multipart=true}};
 recv_multipart(#chumak_req{state=wait_more_msg, pending_recv=nil}=State, From) ->
-    {noreply, State#chumak_req{pending_recv=From}};
+    {noreply, State#chumak_req{pending_recv=From, is_multipart=true}};
 recv_multipart(State, _From) ->
     {reply, {error, efsm}, State}.
 
@@ -154,7 +155,7 @@ peer_recv_message(#chumak_req{state=wait_reply, last_peer_sent=From}=State, Mess
     end;
 
 peer_recv_message(#chumak_req{state=wait_more_msg, last_peer_sent=From}=State, Message, From) ->
-    #chumak_req{msg_buf=Buffer, pending_recv=PendingRecv} = State,
+    #chumak_req{msg_buf=Buffer, pending_recv=PendingRecv, is_multipart=IsMultipart} = State,
     NewBuffer = Buffer ++ [chumak_protocol:message_data(Message)],
 
     case {chumak_protocol:message_has_more(Message), PendingRecv} of
@@ -168,9 +169,11 @@ peer_recv_message(#chumak_req{state=wait_more_msg, last_peer_sent=From}=State, M
 
         %% client already called recv
         {false, PendingRecv} ->
-            % TODO
-            FullMsg = binary:list_to_bin(NewBuffer),
-            gen_server:reply(PendingRecv, {ok, FullMsg}),
+            Reply = case IsMultipart of
+                false -> binary:list_to_bin(NewBuffer);
+                true -> NewBuffer
+            end,
+            gen_server:reply(PendingRecv, {ok, Reply}),
             {noreply, State#chumak_req{state=ready, msg_buf=[], pending_recv=nil}}
     end;
 
