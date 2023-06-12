@@ -92,7 +92,7 @@ send(State, _Data, _From) ->
 
 %% send recv when is already waiting recv command
 recv(#chumak_req{state=wait_recv, msg_buf=Buffer}=State, _From) ->
-    FullMsg = binary:list_to_bin(Buffer),
+    FullMsg = binary:list_to_bin(Buffer), % TODO
     {reply, {ok, FullMsg}, State#chumak_req{state=ready, msg_buf=[]}};
 
 %% not allow recv in 'ready' state
@@ -127,6 +127,9 @@ send_multipart(#chumak_req{lb=LB, state=ready}=State, Multipart, From) ->
 send_multipart(State, _Multipart, _From) ->
     {reply, {error, efsm}, State}.
 
+% TODO
+%recv_multipart(#chumak_req{state=wait_recv, msg_buf=Buffer}=State, From) ->
+%    ;
 recv_multipart(#chumak_req{state=wait_reply, pending_recv=nil}=State, From) ->
     {noreply, State#chumak_req{pending_recv=From}};
 recv_multipart(#chumak_req{state=wait_more_msg, pending_recv=nil}=State, From) ->
