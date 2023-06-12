@@ -56,11 +56,10 @@ init(Identity) ->
               },
     {ok, State}.
 
-terminate(_Reason, #chumak_req{pending_recv=Recv}) ->
-    case Recv of
-        {from, From} -> gen_server:reply(From, {error, closed});
-        _ -> ok
-    end,
+terminate(_Reason, #chumak_req{pending_recv=nil}) ->
+    ok;
+terminate(_Reason, #chumak_req{pending_recv=From}) ->
+    gen_server:reply(From, {error, closed}),
     ok.
 
 identity(#chumak_req{identity=I}) -> I.
@@ -137,13 +136,12 @@ recv_multipart(#chumak_req{state=wait_more_msg, pending_recv=nil}=State, From) -
 recv_multipart(State, _From) ->
     {reply, {error, efsm}, State}.
 
-unblock(#chumak_req{pending_recv={from, PendingRecv}}=State, _From) ->
+unblock(#chumak_req{pending_recv=nil}=State, _From) ->
+    {reply, ok, State};
+unblock(#chumak_req{pending_recv=PendingRecv}=State, _From) ->
     NewState = State#chumak_req{pending_recv=nil},
     gen_server:reply(PendingRecv, {error, again}),
-    {reply, ok, NewState};
-
-unblock(#chumak_req{pending_recv=nil}=State, _From) ->
-    {reply, ok, State}.
+    {reply, ok, NewState}.
 
 peer_recv_message(#chumak_req{state=wait_reply, last_peer_sent=From}=State, Message, From) ->
     case chumak_protocol:message_data(Message) of
