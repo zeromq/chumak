@@ -24,7 +24,7 @@ start_link() ->
 init(_Args) ->
     {ok, {?SUPERVISOR_FLAGS, []}}.
 
--spec start_socket(Type::socket_type(), Identity::string()) -> {ok, SocketPid::pid()} | {error, Reason::atom()}.
+-spec start_socket(Type::socket_type() | atom(), Identity::string()) -> {ok, SocketPid::pid()} | {error, Reason::atom()}.
 start_socket(Type, Identity) ->
     ProcessId = get_child_id(Identity), %% generate an atom ?
     case supervisor:start_child(?MODULE, #{

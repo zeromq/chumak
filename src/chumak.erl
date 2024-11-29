@@ -38,7 +38,7 @@ stop(_State) ->
 
 
 %% @doc start a new socket
--spec socket(Type::socket_type(), Identity::string()) ->
+-spec socket(Type::socket_type() | atom(), Identity::string()) ->
                     {ok, SocketPid::pid()} | {error, Reason::atom()}.
 socket(Type, Identity)
   when is_atom(Type),

@@ -11,7 +11,7 @@
 
 -export([module/1, error_msg/1]).
 
--type pattern_state() :: tuple().
+-type pattern_state() :: map().
 
 -callback valid_peer_type(SocketType::socket_type()) -> valid | invalid.
 -callback init(Identity::string()) -> {ok, pattern_state()}.

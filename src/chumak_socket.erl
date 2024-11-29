@@ -38,12 +38,18 @@ stop(Pid) ->
 %% gen_server implementation
 init({Type, Identity}) ->
     process_flag(trap_exit, true), %% trap exit
-    case chumak_pattern:module(Type) of
-        {error, Reason} ->
-            {stop, Reason};
-        ModuleName -> %% get the implementation of the type
-            {ok, S} = ModuleName:init(Identity),
-            {ok, #state{socket=ModuleName, socket_state=S, identity = Identity}}
+    case code:ensure_loaded(Type) of
+        {error, _} ->
+            case chumak_pattern:module(Type) of
+                {error, Reason} ->
+                    {stop, Reason};
+                ModuleName -> %% get the implementation of the type
+                    {ok, S} = ModuleName:init(Identity),
+                    {ok, #state{socket=ModuleName, socket_state=S, identity = Identity}}
+            end;
+        _ -> 
+            {ok, S} = Type:init(Identity),
+            {ok, #state{socket=Type, socket_state=S, identity = Identity}}
     end.
 
 code_change(_OldVsn, State, _Extra) ->
