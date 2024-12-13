@@ -144,6 +144,16 @@ From [Wikipedia](https://en.wikipedia.org/wiki/Chumak):
 
 ## How to publish new Hex.pm version
 
+To update a hex.pm version, you simply need to bump the version of erlang package and the github action will publish a new version on Hex.pm:
+
+1. Adjust the version of the package in `src/chumak.app.src`
+2. Commit & Push
+3. Done
+
+
+
+## How to publish to Hex.pm manually (Note: this is now superceeded by automatic github action above)
+
 This info is here for maintainers - since I keep forgetting how to do this.
 
 1. Adjust the version of the package in `src/chumak.app.src`
