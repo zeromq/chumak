@@ -13,7 +13,6 @@
    ]},
   {env,[]},
   {modules, []},
-
   {maintainers, ["Andriy Drozdyuk"]},
   {licenses, ["MPLv2"]},
   {links, [{"Github", "https://github.com/chovencorp/chumak"}]}
