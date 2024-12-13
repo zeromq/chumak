@@ -1,7 +1,7 @@
 on:
   push:
     paths:
-      - chumak/src/chumak.app.src
+      - src/chumak.app.src
 
 jobs:
   publish:
