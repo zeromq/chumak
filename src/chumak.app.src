@@ -12,6 +12,7 @@
     stdlib
    ]},
   {env,[]},
+
   {modules, []},
   {maintainers, ["Andriy Drozdyuk"]},
   {licenses, ["MPLv2"]},
