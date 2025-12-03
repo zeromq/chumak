@@ -1,0 +1,50 @@
+name: Erlang CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Test on OTP ${{matrix.otp_version}}
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    strategy:
+      matrix:
+        otp_version: ['24.3', '25.3', '26.2', '27.2']
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Erlang
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{matrix.otp_version}}
+        rebar3-version: '3.22.1'
+    
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc make
+    
+    - name: Compile
+      run: rebar3 compile
+    
+    - name: Run tests
+      run: rebar3 eunit -c
+    
+    - name: Generate coverage report
+      run: rebar3 cover
+    
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-coverage-report
+        path: _build/test/cover/ 
