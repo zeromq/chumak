@@ -11,6 +11,8 @@
 %% - enacl  - this also depends on libsodium, but it also requires 
 %%            an Erlang VM that supports dirty schedulers.
 %%            https://github.com/jlouis/enacl
+%% - zodium - depends on libsodium, but compiled with zigler.
+%%            https://github.com/IslandUsurper/zodium
 %% - none   - no support for the CURVE security model.
 %%
 %% If the CHUMAK_CURVE_LIB environment variable is _not_ set,
@@ -24,9 +26,9 @@
 %% dependency. In the other cases you will have to make the library available
 %% via other means.
 %%
-%% The selected option ("nacl", "enacl", "nacerl" or "none") will be 
-%% passed as a macro to the compiler. Based on this macro it is 
-%% determined which library is used by the code.
+%% The selected option ("nacl", "enacl", "nacerl", "zodium", or "none") will be
+%% passed as a macro to the compiler. Based on this macro it is determined
+%% which library is used by the code.
 
 %% Some of the ideas used here were found in 
 %% https://github.com/klacke/yaws/blob/master/rebar.config.script
@@ -115,6 +117,8 @@ CurveCompilerOption = case CurveDep of
                                               {d, 'CHUMAK_CURVE_LIB_NACL', true};
                                           "enacl" ->
                                               {d, 'CHUMAK_CURVE_LIB_ENACL', true};
+                                          "zodium" ->
+                                              {d, 'CHUMAK_CURVE_LIB_ZODIUM', true};
                                           "none" ->
                                               undefined
                                       end

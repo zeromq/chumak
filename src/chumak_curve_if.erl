@@ -28,6 +28,10 @@
 -define(CURVE_MOD, enacl).
 -endif.
 
+-ifdef(CHUMAK_CURVE_LIB_ZODIUM).
+-define(CURVE_MOD, 'Elixir.Zodium').
+-endif.
+
 -ifdef(CHUMAK_CURVE_LIB_NONE).
 -define(CURVE_MOD, none).
 -endif.

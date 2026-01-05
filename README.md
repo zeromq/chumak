@@ -82,6 +82,8 @@ The following values for `CHUMAK_CURVE_LIB` are supported:
            `CHUMAK_CURVE_LIB` is set to "enacl", it will be assumed that
            this library is available and it will be used.
 
+- zodium - depends on libsodium, but uses zigler to compile it.
+
 ## Test
 
 ```
